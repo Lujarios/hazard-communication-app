@@ -1,0 +1,225 @@
+"use client";
+
+import { useCallback, useEffect, useState } from "react";
+import {
+  MessageSquare,
+  Mic,
+  Square,
+} from "lucide-react";
+
+import { Badge } from "~/components/ui/badge";
+import { Button } from "~/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card";
+import { Separator } from "~/components/ui/separator";
+import { Textarea } from "~/components/ui/textarea";
+import { useSpeechRecognition } from "~/hooks/use-speech-recognition";
+// import { transcribeAudioViaAws } from "~/lib/transcription-placeholder";
+import { cn } from "~/lib/utils";
+
+function formatElapsed(seconds: number): string {
+  const m = Math.floor(seconds / 60);
+  const s = seconds % 60;
+  return `${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
+}
+
+function SignalBars() {
+  const heights = ["h-1.5", "h-2.5", "h-3.5", "h-2", "h-4"];
+
+  return (
+    <div className="flex items-end gap-0.5" aria-hidden>
+      {heights.map((h, i) => (
+        <div key={i} className={cn("w-1 rounded-sm bg-emerald-500", h)} />
+      ))}
+    </div>
+  );
+}
+
+type TranscriptionPanelProps = {
+  onRecordingChange?: (isRecording: boolean) => void;
+};
+
+export function TranscriptionPanel({
+  onRecordingChange,
+}: TranscriptionPanelProps) {
+  const [transcript, setTranscript] = useState("");
+  const [isRecording, setIsRecording] = useState(false);
+  const [elapsedSeconds, setElapsedSeconds] = useState(0);
+
+  const {
+    isSupported,
+    isListening,
+    interimTranscript,
+    error: speechError,
+    start,
+    stop: stopSpeech,
+  } = useSpeechRecognition();
+
+  const displayValue =
+    isListening && interimTranscript && !transcript.includes(interimTranscript)
+      ? `${transcript}${transcript ? " " : ""}${interimTranscript}`
+      : transcript;
+
+  const hasTranscript = transcript.trim().length > 0;
+
+  useEffect(() => {
+    if (!isRecording) return;
+
+    const id = window.setInterval(() => {
+      setElapsedSeconds((s) => s + 1);
+    }, 1000);
+
+    return () => window.clearInterval(id);
+  }, [isRecording]);
+
+  useEffect(() => {
+    onRecordingChange?.(isRecording);
+  }, [isRecording, onRecordingChange]);
+
+  const handleFinalResult = useCallback((text: string) => {
+    setTranscript((prev) => {
+      const separator = prev.trim() ? " " : "";
+      return `${prev}${separator}${text}`.trim();
+    });
+  }, []);
+
+  const handleStart = () => {
+    setIsRecording(true);
+    setElapsedSeconds(0);
+    start(handleFinalResult);
+  };
+
+  const handleStop = () => {
+    setIsRecording(false);
+    stopSpeech();
+    // Production: pass MediaRecorder audio blob to transcribeAudioViaAws(blob)
+  };
+
+  const handleTextChange = (value: string) => {
+    setTranscript(value);
+  };
+
+  const showUnsupportedBanner = !isSupported;
+
+  return (
+    <Card className="ring-1 ring-slate-200">
+      <CardHeader className="flex flex-row flex-wrap items-center justify-between gap-2 border-b border-slate-100 py-3">
+        <CardTitle className="text-base font-semibold text-slate-800">
+          Live Transcription
+        </CardTitle>
+        {isRecording && (
+          <Badge
+            variant="outline"
+            className="gap-1.5 border-red-200 bg-red-50 text-red-700"
+          >
+            <span className="relative flex size-2">
+              <span className="absolute inline-flex size-full animate-ping rounded-full bg-red-500 opacity-75" />
+              <span className="relative inline-flex size-2 rounded-full bg-red-600" />
+            </span>
+            Recording in progress
+          </Badge>
+        )}
+      </CardHeader>
+
+      <CardContent className="space-y-4 pt-4">
+        {showUnsupportedBanner && (
+          <p
+            role="status"
+            className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900"
+          >
+            Speech recognition is unavailable in this browser. You can type your
+            transcript below.
+          </p>
+        )}
+
+        {speechError && isSupported && (
+          <p
+            role="alert"
+            className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-800"
+          >
+            {speechError}
+          </p>
+        )}
+
+        <div className="flex flex-col gap-4 lg:flex-row lg:items-start">
+          <div className="flex shrink-0 flex-col items-center gap-2 text-center lg:w-28">
+            <div
+              className={cn(
+                "flex size-16 items-center justify-center rounded-full",
+                isRecording
+                  ? "bg-[#1e4a8c] text-white shadow-lg shadow-blue-900/20"
+                  : "bg-slate-100 text-slate-400",
+              )}
+            >
+              <Mic className="size-8" aria-hidden />
+            </div>
+            {isRecording ? (
+              <>
+                <p className="text-sm font-medium text-[#1e4a8c]">Listening…</p>
+                <p className="text-xs text-slate-500">Speak clearly</p>
+              </>
+            ) : (
+              <p className="text-xs text-slate-500">Ready to record</p>
+            )}
+          </div>
+
+          <Textarea
+            value={displayValue}
+            onChange={(e) => handleTextChange(e.target.value)}
+            placeholder="Your spoken hazard explanation will appear here. You can also type directly."
+            className="min-h-[140px] flex-1 resize-y text-sm leading-relaxed"
+            aria-label="Transcript"
+          />
+
+          <div className="flex shrink-0 flex-col items-stretch gap-3 sm:min-w-[140px]">
+            <div className="flex items-center justify-between gap-2 rounded-lg bg-slate-50 px-3 py-2">
+              <span className="font-mono text-lg font-semibold tabular-nums text-slate-800">
+                {formatElapsed(elapsedSeconds)}
+              </span>
+              <SignalBars />
+            </div>
+
+            <Button
+              type="button"
+              className="bg-[#1e4a8c] hover:bg-[#163a6e]"
+              onClick={handleStart}
+              disabled={!isSupported || isRecording}
+            >
+              <Mic className="size-4" />
+              Start Talking
+            </Button>
+
+            <Button
+              type="button"
+              variant="destructive"
+              className="bg-red-600 text-white hover:bg-red-700"
+              onClick={handleStop}
+              disabled={!isRecording}
+            >
+              <Square className="size-3.5 fill-current" />
+              Stop
+            </Button>
+            <p className="text-center text-[10px] text-slate-400">End recording</p>
+
+            <Separator />
+
+            <Button
+              type="button"
+              variant="outline"
+              className="border-[#1e4a8c] text-[#1e4a8c] hover:bg-[#1e4a8c]/5"
+              disabled={!hasTranscript}
+              onClick={() => {
+                // AI persona feedback and scorecard will be wired here
+              }}
+            >
+              <MessageSquare className="size-4" />
+              Get Feedback
+            </Button>
+            <p className="text-center text-[10px] text-slate-400">
+              Feedback available after stopping
+            </p>
+          </div>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
