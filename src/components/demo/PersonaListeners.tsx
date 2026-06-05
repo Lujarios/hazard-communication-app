@@ -33,16 +33,16 @@ type PersonaListenersProps = {
 
 export function PersonaListeners({ isRecording = false }: PersonaListenersProps) {
   return (
-    <Card className="h-fit w-full py-0 ring-1 ring-slate-200">
-      <CardHeader className="border-b border-slate-100 py-3">
-        <CardTitle className="flex items-center gap-2 text-base font-semibold text-slate-800">
+    <Card className="h-fit w-full gap-0 py-0 ring-1 ring-slate-200">
+      <CardHeader className="flex justify-center border-b border-slate-100 py-3 pb-3">
+        <CardTitle className="flex items-center justify-center gap-2 text-base font-semibold text-slate-800">
           AI Worker Listeners
           <Info className="size-4 text-slate-400" aria-hidden />
         </CardTitle>
       </CardHeader>
 
       <CardContent className="p-0">
-        <ul className="divide-y divide-slate-100">
+        <ul className="m-0 divide-y divide-slate-100 p-0">
           {workerPersonas.map((persona) => (
             <li
               key={persona.id}

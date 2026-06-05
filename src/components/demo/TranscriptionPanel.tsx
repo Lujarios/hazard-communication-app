@@ -101,8 +101,8 @@ export function TranscriptionPanel({
   const showUnsupportedBanner = !isSupported;
 
   return (
-    <Card className="ring-1 ring-slate-200">
-      <CardHeader className="flex flex-row flex-wrap items-center justify-between gap-2 border-b border-slate-100 py-3">
+    <Card className="gap-0 py-0 ring-1 ring-slate-200">
+      <CardHeader className="flex flex-row flex-wrap items-center justify-between gap-2 border-b border-slate-100 py-3 pb-3">
         <CardTitle className="text-base font-semibold text-slate-800">
           Live Transcription
         </CardTitle>
@@ -120,7 +120,7 @@ export function TranscriptionPanel({
         )}
       </CardHeader>
 
-      <CardContent className="space-y-4 pt-4">
+      <CardContent className="space-y-4 px-4 pb-4 pt-4">
         {showUnsupportedBanner && (
           <p
             role="status"
@@ -140,8 +140,8 @@ export function TranscriptionPanel({
           </p>
         )}
 
-        <div className="flex flex-col gap-4 lg:flex-row lg:items-start">
-          <div className="flex shrink-0 flex-col items-center gap-2 text-center lg:w-28">
+        <div className="flex min-h-[220px] flex-col gap-4 lg:flex-row lg:items-stretch">
+          <div className="flex shrink-0 flex-col items-center justify-center gap-2 self-center text-center lg:w-28">
             <div
               className={cn(
                 "flex size-16 items-center justify-center rounded-full",
@@ -162,13 +162,15 @@ export function TranscriptionPanel({
             )}
           </div>
 
-          <Textarea
-            value={displayValue}
-            onChange={(e) => handleTextChange(e.target.value)}
-            placeholder="Your spoken hazard explanation will appear here. You can also type directly."
-            className="min-h-[140px] flex-1 resize-y text-sm leading-relaxed"
-            aria-label="Transcript"
-          />
+          <div className="flex min-h-[200px] min-w-0 flex-1 self-stretch">
+            <Textarea
+              value={displayValue}
+              onChange={(e) => handleTextChange(e.target.value)}
+              placeholder="Your spoken hazard explanation will appear here. You can also type directly."
+              className="field-sizing-fixed size-full min-h-0 resize-none overflow-y-auto text-sm leading-relaxed"
+              aria-label="Transcript"
+            />
+          </div>
 
           <div className="flex shrink-0 flex-col items-stretch gap-3 sm:min-w-[140px]">
             <div className="flex items-center justify-between gap-2 rounded-lg bg-slate-50 px-3 py-2">
@@ -198,7 +200,6 @@ export function TranscriptionPanel({
               <Square className="size-3.5 fill-current" />
               Stop
             </Button>
-            <p className="text-center text-[10px] text-slate-400">End recording</p>
 
             <Separator />
 
