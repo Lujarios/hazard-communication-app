@@ -16,6 +16,7 @@ export type WorkerPersona = {
 };
 
 export const scenario = {
+  id: "construction-site-demo",
   title: "Scenario: Commercial Building Construction",
   imageSrc: "/images/construction-site-demo.png",
   imageAlt: "Multi-story commercial construction site with scaffolding and crane",
