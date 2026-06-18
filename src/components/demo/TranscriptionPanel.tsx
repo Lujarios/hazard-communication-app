@@ -13,8 +13,14 @@ import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card";
 import { Separator } from "~/components/ui/separator";
 import { Textarea } from "~/components/ui/textarea";
 import { useSpeechRecognition } from "~/hooks/use-speech-recognition";
+import { scenario } from "~/lib/demo-data";
 // import { transcribeAudioViaAws } from "~/lib/transcription-placeholder";
 import { cn } from "~/lib/utils";
+import { api } from "~/trpc/react";
+import {
+  initialFeedbackState,
+  type FeedbackState,
+} from "~/types/feedback";
 
 function formatElapsed(seconds: number): string {
   const m = Math.floor(seconds / 60);
@@ -36,10 +42,12 @@ function SignalBars() {
 
 type TranscriptionPanelProps = {
   onRecordingChange?: (isRecording: boolean) => void;
+  onFeedbackStateChange?: (state: FeedbackState) => void;
 };
 
 export function TranscriptionPanel({
   onRecordingChange,
+  onFeedbackStateChange,
 }: TranscriptionPanelProps) {
   const [transcript, setTranscript] = useState("");
   const [isRecording, setIsRecording] = useState(false);
@@ -54,12 +62,38 @@ export function TranscriptionPanel({
     stop: stopSpeech,
   } = useSpeechRecognition();
 
+  const evaluateFeedback = api.feedback.evaluate.useMutation({
+    onMutate: () => {
+      onFeedbackStateChange?.({
+        status: "loading",
+        data: null,
+        error: null,
+      });
+    },
+    onSuccess: (data) => {
+      onFeedbackStateChange?.({
+        status: "success",
+        data,
+        error: null,
+      });
+    },
+    onError: (error) => {
+      onFeedbackStateChange?.({
+        status: "error",
+        data: null,
+        error: error.message,
+      });
+    },
+  });
+
   const displayValue =
     isListening && interimTranscript && !transcript.includes(interimTranscript)
       ? `${transcript}${transcript ? " " : ""}${interimTranscript}`
       : transcript;
 
   const hasTranscript = transcript.trim().length > 0;
+  const canGetFeedback =
+    hasTranscript && !isRecording && !evaluateFeedback.isPending;
 
   useEffect(() => {
     if (!isRecording) return;
@@ -83,6 +117,7 @@ export function TranscriptionPanel({
   }, []);
 
   const handleStart = () => {
+    onFeedbackStateChange?.(initialFeedbackState);
     setIsRecording(true);
     setElapsedSeconds(0);
     start(handleFinalResult);
@@ -96,6 +131,13 @@ export function TranscriptionPanel({
 
   const handleTextChange = (value: string) => {
     setTranscript(value);
+  };
+
+  const handleGetFeedback = () => {
+    evaluateFeedback.mutate({
+      scenarioId: scenario.id,
+      transcript: transcript.trim(),
+    });
   };
 
   const showUnsupportedBanner = !isSupported;
@@ -207,16 +249,16 @@ export function TranscriptionPanel({
               type="button"
               variant="outline"
               className="border-[#1e4a8c] text-[#1e4a8c] hover:bg-[#1e4a8c]/5"
-              disabled={!hasTranscript}
-              onClick={() => {
-                // AI persona feedback and scorecard will be wired here
-              }}
+              disabled={!canGetFeedback}
+              onClick={handleGetFeedback}
             >
               <MessageSquare className="size-4" />
-              Get Feedback
+              {evaluateFeedback.isPending ? "Evaluating…" : "Get Feedback"}
             </Button>
             <p className="text-center text-[10px] text-slate-400">
-              Feedback available after stopping
+              {isRecording
+                ? "Stop recording before requesting feedback"
+                : "Feedback available after stopping"}
             </p>
           </div>
         </div>

@@ -11,7 +11,7 @@ import { initialFeedbackState } from "~/types/feedback";
 
 export default function Home() {
   const [isRecording, setIsRecording] = useState(false);
-  const [feedbackState] = useState(initialFeedbackState);
+  const [feedbackState, setFeedbackState] = useState(initialFeedbackState);
 
   return (
     <div className="min-h-screen bg-slate-50">
@@ -25,7 +25,10 @@ export default function Home() {
         <div className="grid gap-6 lg:grid-cols-[1fr_320px]">
           <div className="flex min-w-0 flex-col gap-4">
             <ScenarioViewer />
-            <TranscriptionPanel onRecordingChange={setIsRecording} />
+            <TranscriptionPanel
+              onRecordingChange={setIsRecording}
+              onFeedbackStateChange={setFeedbackState}
+            />
           </div>
 
           <div className="flex min-w-0 flex-col gap-4">
