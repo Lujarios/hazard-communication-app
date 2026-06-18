@@ -1,5 +1,6 @@
 import { z } from "zod";
 
+import { workerPersonas } from "~/lib/demo-data";
 import { safetyRubricCriteria } from "~/lib/safety-rubric";
 import type {
   CriterionRating,
@@ -10,9 +11,14 @@ import type {
 } from "~/types/feedback";
 
 export const rubricCriterionIds = safetyRubricCriteria.map((c) => c.id);
+export const workerPersonaIds = workerPersonas.map((persona) => persona.id);
 
 const rubricCriterionIdSchema = z.enum(
   rubricCriterionIds as [string, ...string[]],
+);
+
+const workerPersonaIdSchema = z.enum(
+  workerPersonaIds as [string, ...string[]],
 );
 
 export const starRatingSchema = z.union([
@@ -37,7 +43,7 @@ export const missedItemResponseSchema = z.object({
 });
 
 export const personaFeedbackResponseSchema = z.object({
-  personaId: z.string().min(1),
+  personaId: workerPersonaIdSchema,
   reaction: z.string().min(1),
   understood: z.boolean(),
 });
@@ -46,7 +52,7 @@ export const safetyTalkEvaluationResponseSchema = z.object({
   criteriaRatings: z.array(criterionRatingResponseSchema),
   missedItems: z.array(missedItemResponseSchema),
   overallSummary: z.string().min(1),
-  personaFeedback: z.array(personaFeedbackResponseSchema).optional(),
+  personaFeedback: z.array(personaFeedbackResponseSchema),
 });
 
 export type SafetyTalkEvaluationResponse = z.infer<
@@ -92,12 +98,26 @@ export function toSafetyTalkFeedback(
     relatedHazardId: item.relatedHazardId,
   }));
 
-  const personaFeedback: PersonaFeedback[] | undefined =
-    response.personaFeedback?.map((item) => ({
+  const returnedPersonaIds = new Set(
+    response.personaFeedback.map((item) => item.personaId),
+  );
+  const missingPersonas = workerPersonaIds.filter(
+    (id) => !returnedPersonaIds.has(id),
+  );
+
+  if (missingPersonas.length > 0) {
+    throw new Error(
+      `Evaluation response missing persona feedback: ${missingPersonas.join(", ")}`,
+    );
+  }
+
+  const personaFeedback: PersonaFeedback[] = response.personaFeedback.map(
+    (item) => ({
       personaId: item.personaId,
       reaction: item.reaction,
       understood: item.understood,
-    }));
+    }),
+  );
 
   return {
     criteriaRatings,

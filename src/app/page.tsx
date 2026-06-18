@@ -32,7 +32,11 @@ export default function Home() {
           </div>
 
           <div className="flex min-w-0 flex-col gap-4">
-            <PersonaListeners isRecording={isRecording} />
+            <PersonaListeners
+              isRecording={isRecording}
+              isEvaluating={feedbackState.status === "loading"}
+              personaFeedback={feedbackState.data?.personaFeedback}
+            />
             <FeedbackPreview
               feedback={feedbackState.data}
               isLoading={feedbackState.status === "loading"}
