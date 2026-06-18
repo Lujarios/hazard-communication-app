@@ -44,6 +44,7 @@ function getPersonaFeedback(
 }
 
 type PersonaListenersProps = {
+  className?: string;
   isRecording?: boolean;
   isEvaluating?: boolean;
   personaFeedback?: PersonaFeedback[];
@@ -119,12 +120,16 @@ function PersonaStatus({
 }
 
 export function PersonaListeners({
+  className,
   isRecording = false,
   isEvaluating = false,
   personaFeedback,
 }: PersonaListenersProps) {
   return (
-    <Card className="h-fit w-full gap-0 py-0 ring-1 ring-slate-200">
+    <Card
+      data-tour="personas"
+      className={cn("flex h-full w-full flex-col gap-0 py-0 ring-1 ring-slate-200", className)}
+    >
       <CardHeader className="flex justify-center border-b border-slate-100 py-3 pb-3">
         <CardTitle className="flex items-center justify-center gap-2 text-base font-semibold text-slate-800">
           AI Worker Listeners
@@ -132,34 +137,38 @@ export function PersonaListeners({
         </CardTitle>
       </CardHeader>
 
-      <CardContent className="p-0">
-        <ul className="m-0 divide-y divide-slate-100 p-0">
+      <CardContent className="flex min-h-0 flex-1 flex-col p-2">
+        <ul className="m-0 flex flex-1 flex-col gap-1.5 p-0">
           {workerPersonas.map((persona) => {
             const feedback = getPersonaFeedback(persona.id, personaFeedback);
 
             return (
-              <li
-                key={persona.id}
-                className="flex items-start gap-3 px-4 py-3.5"
-              >
-                <Avatar size="lg" className="shrink-0">
-                  <AvatarFallback
-                    className={cn("text-xs font-semibold", persona.avatarColor)}
-                  >
-                    {persona.initials}
-                  </AvatarFallback>
-                </Avatar>
+              <li key={persona.id} className="flex min-h-0 flex-1">
+                <div
+                  className={cn(
+                    "flex h-full w-full gap-3 rounded-lg border border-slate-100/80 bg-slate-50/60 px-3 py-3 ring-1 ring-slate-100/50",
+                    feedback ? "items-start" : "items-center",
+                  )}
+                >
+                  <Avatar size="lg" className="shrink-0">
+                    <AvatarFallback
+                      className={cn("text-xs font-semibold", persona.avatarColor)}
+                    >
+                      {persona.initials}
+                    </AvatarFallback>
+                  </Avatar>
 
-                <div className="min-w-0 flex-1">
-                  <p className="text-sm font-semibold text-slate-800">
-                    {persona.name}
-                  </p>
-                  <p className="text-xs text-slate-500">{persona.description}</p>
-                  <PersonaStatus
-                    isRecording={isRecording}
-                    isEvaluating={isEvaluating}
-                    feedback={feedback}
-                  />
+                  <div className="min-w-0 flex-1">
+                    <p className="text-sm font-semibold text-slate-800">
+                      {persona.name}
+                    </p>
+                    <p className="text-xs text-slate-500">{persona.description}</p>
+                    <PersonaStatus
+                      isRecording={isRecording}
+                      isEvaluating={isEvaluating}
+                      feedback={feedback}
+                    />
+                  </div>
                 </div>
               </li>
             );

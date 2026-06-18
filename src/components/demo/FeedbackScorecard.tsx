@@ -8,7 +8,6 @@ import {
 import { StarRating } from "~/components/demo/StarRating";
 import { Badge } from "~/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card";
-import { Separator } from "~/components/ui/separator";
 import { getRubricCriterion } from "~/lib/safety-rubric";
 import type {
   MissedItem,
@@ -72,15 +71,15 @@ function ScorecardSkeleton() {
   );
 }
 
-function MissedItemRow({ item }: { item: MissedItem }) {
+function MissedItemCard({ item }: { item: MissedItem }) {
   const styles = missedItemSeverityStyles[item.severity];
 
   return (
-    <li className="flex items-start gap-2 text-xs leading-relaxed text-slate-700">
+    <li className="flex flex-col items-center rounded-lg border border-slate-100 bg-slate-50 px-3 py-3 text-center ring-1 ring-slate-100/80">
       <Badge
         variant="outline"
         className={cn(
-          "mt-0.5 shrink-0 border-l-4 px-2 py-0.5 text-[10px] font-semibold",
+          "border-l-4 px-2.5 py-0.5 text-[10px] font-semibold",
           styles.badge,
         )}
       >
@@ -90,14 +89,16 @@ function MissedItemRow({ item }: { item: MissedItem }) {
         />
         {missedItemCategoryLabels[item.category]}
       </Badge>
-      <span>{item.description}</span>
+      <p className="mt-2.5 text-xs leading-relaxed text-slate-700">
+        {item.description}
+      </p>
     </li>
   );
 }
 
 function EmptyState() {
   return (
-    <div className="flex gap-4">
+    <div className="flex gap-4 rounded-lg border border-dashed border-slate-200 bg-slate-50/50 px-4 py-6">
       <div
         className="flex size-12 shrink-0 items-center justify-center rounded-xl bg-[#1e4a8c]/10 text-[#1e4a8c]"
         aria-hidden
@@ -123,7 +124,7 @@ export function FeedbackScorecard({
   error = null,
 }: FeedbackScorecardProps) {
   return (
-    <Card className="gap-0 py-0 ring-1 ring-slate-200">
+    <Card data-tour="scorecard" className="gap-0 py-0 ring-1 ring-slate-200">
       <CardHeader className="border-b border-slate-100 py-3 pb-3">
         <CardTitle className="flex items-center gap-2 text-base font-semibold text-slate-800">
           <Target className="size-4 text-[#1e4a8c]" aria-hidden />
@@ -133,14 +134,16 @@ export function FeedbackScorecard({
 
       <CardContent className="px-4 py-4">
         {isLoading && (
-          <div className="flex flex-col items-center gap-3 py-2">
-            <Loader2
-              className="size-6 animate-spin text-[#1e4a8c]"
-              aria-hidden
-            />
-            <p className="text-xs text-slate-500" role="status">
-              Evaluating your hazard talk…
-            </p>
+          <div className="flex flex-col gap-4 py-2">
+            <div className="flex items-center justify-center gap-2">
+              <Loader2
+                className="size-6 animate-spin text-[#1e4a8c]"
+                aria-hidden
+              />
+              <p className="text-sm text-slate-500" role="status">
+                Evaluating your hazard talk…
+              </p>
+            </div>
             <ScorecardSkeleton />
           </div>
         )}
@@ -168,9 +171,9 @@ export function FeedbackScorecard({
         {!isLoading && !error && !feedback && <EmptyState />}
 
         {!isLoading && !error && feedback && (
-          <div className="space-y-4">
-            <div className="rounded-lg bg-[#1e4a8c]/5 px-3 py-3 ring-1 ring-[#1e4a8c]/10">
-              <div className="flex flex-wrap items-center justify-between gap-2">
+          <div className="space-y-6">
+            <div className="rounded-lg bg-[#1e4a8c]/5 px-4 py-4 ring-1 ring-[#1e4a8c]/10">
+              <div className="flex flex-wrap items-center justify-between gap-3">
                 <p className="text-xs font-semibold uppercase tracking-wide text-[#1e4a8c]">
                   Overall
                 </p>
@@ -179,16 +182,16 @@ export function FeedbackScorecard({
                   label={`Overall score: ${feedback.overallStars} out of 5 stars`}
                 />
               </div>
-              <p className="mt-2 text-sm leading-relaxed text-slate-700">
+              <p className="mt-3 text-sm leading-relaxed text-slate-700 sm:text-base">
                 {feedback.overallSummary}
               </p>
             </div>
 
             <div>
-              <h3 className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-500">
+              <h3 className="mb-3 text-xs font-semibold uppercase tracking-wide text-slate-500">
                 Rubric scores
               </h3>
-              <ul className="space-y-2">
+              <ul className="grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
                 {feedback.criteriaRatings.map((rating) => {
                   const criterion = getRubricCriterion(rating.criterionId);
                   const label = criterion?.label ?? rating.criterionId;
@@ -217,27 +220,25 @@ export function FeedbackScorecard({
               </ul>
             </div>
 
-            {feedback.missedItems.length > 0 && (
-              <>
-                <Separator />
-                <div>
-                  <h3 className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-500">
-                    What was missed
-                  </h3>
-                  <ul className="space-y-2">
-                    {feedback.missedItems.map((item, index) => (
-                      <MissedItemRow key={`${item.category}-${index}`} item={item} />
-                    ))}
-                  </ul>
-                </div>
-              </>
-            )}
-
-            {feedback.missedItems.length === 0 && (
-              <p className="text-xs text-emerald-700">
-                No major gaps identified against the scenario answer key.
-              </p>
-            )}
+            <div>
+              <h3 className="mb-3 text-xs font-semibold uppercase tracking-wide text-slate-500">
+                What was missed
+              </h3>
+              {feedback.missedItems.length > 0 ? (
+                <ul className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                  {feedback.missedItems.map((item, index) => (
+                    <MissedItemCard
+                      key={`${item.category}-${index}`}
+                      item={item}
+                    />
+                  ))}
+                </ul>
+              ) : (
+                <p className="rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-4 text-center text-xs leading-relaxed text-emerald-800 sm:text-sm">
+                  No major gaps identified against the scenario answer key.
+                </p>
+              )}
+            </div>
           </div>
         )}
       </CardContent>

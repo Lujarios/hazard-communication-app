@@ -41,11 +41,13 @@ function SignalBars() {
 }
 
 type TranscriptionPanelProps = {
+  className?: string;
   onRecordingChange?: (isRecording: boolean) => void;
   onFeedbackStateChange?: (state: FeedbackState) => void;
 };
 
 export function TranscriptionPanel({
+  className,
   onRecordingChange,
   onFeedbackStateChange,
 }: TranscriptionPanelProps) {
@@ -143,7 +145,10 @@ export function TranscriptionPanel({
   const showUnsupportedBanner = !isSupported;
 
   return (
-    <Card className="gap-0 py-0 ring-1 ring-slate-200">
+    <Card
+      data-tour="transcription"
+      className={cn("flex h-full flex-col gap-0 py-0 ring-1 ring-slate-200", className)}
+    >
       <CardHeader className="flex flex-row flex-wrap items-center justify-between gap-2 border-b border-slate-100 py-3 pb-3">
         <CardTitle className="text-base font-semibold text-slate-800">
           Live Transcription
@@ -162,7 +167,7 @@ export function TranscriptionPanel({
         )}
       </CardHeader>
 
-      <CardContent className="space-y-4 px-4 pb-4 pt-4">
+      <CardContent className="flex flex-1 flex-col space-y-4 px-4 pb-4 pt-4">
         {showUnsupportedBanner && (
           <p
             role="status"
@@ -182,7 +187,7 @@ export function TranscriptionPanel({
           </p>
         )}
 
-        <div className="flex min-h-[220px] flex-col gap-4 lg:flex-row lg:items-stretch">
+        <div className="flex min-h-[280px] flex-1 flex-col gap-4 lg:min-h-0 lg:flex-row lg:items-stretch">
           <div className="flex shrink-0 flex-col items-center justify-center gap-2 self-center text-center lg:w-28">
             <div
               className={cn(
@@ -204,7 +209,7 @@ export function TranscriptionPanel({
             )}
           </div>
 
-          <div className="flex min-h-[200px] min-w-0 flex-1 self-stretch">
+          <div className="flex min-h-[240px] min-w-0 flex-1 self-stretch lg:min-h-0">
             <Textarea
               value={displayValue}
               onChange={(e) => handleTextChange(e.target.value)}

@@ -11,9 +11,12 @@ import {
 } from "~/lib/demo-data";
 import { cn } from "~/lib/utils";
 
-export function ScenarioViewer() {
+export function ScenarioViewer({ className }: { className?: string }) {
   return (
-    <Card className="gap-0 overflow-hidden py-0 ring-1 ring-slate-200">
+    <Card
+      data-tour="scenario"
+      className={cn("gap-0 overflow-hidden py-0 ring-1 ring-slate-200", className)}
+    >
       <div className="flex items-center gap-2 bg-slate-800 px-4 py-2.5 text-white">
         <h2 className="flex-1 text-sm font-semibold sm:text-base">
           {scenario.title}
