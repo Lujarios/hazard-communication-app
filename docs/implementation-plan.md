@@ -56,6 +56,8 @@ Build a local MVP prototype of the hazard communication assessment flow.
 
 See **`docs/gpt-feedback.md`** for setup, architecture, and manual test steps.
 
+Sample transcripts for copy-paste testing: **`docs/test-transcripts.md`** (strong / okay / poor).
+
 ## Rule
 
 Do not skip ahead to cloud integration until the local prototype is stable.

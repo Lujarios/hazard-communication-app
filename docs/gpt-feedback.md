@@ -162,3 +162,7 @@ Record or paste a transcript that mentions **some but not all** hazards (e.g. ed
 ## Cost note
 
 Each evaluation is one `gpt-4o-mini` chat completion with a large system prompt. Model is configured in `src/server/openai/evaluate-safety-talk.ts`.
+
+## Sample transcripts for testing
+
+Copy-paste hazard talks rated strong, okay, and poor: **`docs/test-transcripts.md`**
