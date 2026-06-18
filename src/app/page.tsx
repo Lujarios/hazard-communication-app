@@ -7,9 +7,11 @@ import { FeedbackPreview } from "~/components/demo/FeedbackPreview";
 import { PersonaListeners } from "~/components/demo/PersonaListeners";
 import { ScenarioViewer } from "~/components/demo/ScenarioViewer";
 import { TranscriptionPanel } from "~/components/demo/TranscriptionPanel";
+import { initialFeedbackState } from "~/types/feedback";
 
 export default function Home() {
   const [isRecording, setIsRecording] = useState(false);
+  const [feedbackState] = useState(initialFeedbackState);
 
   return (
     <div className="min-h-screen bg-slate-50">
@@ -28,7 +30,11 @@ export default function Home() {
 
           <div className="flex min-w-0 flex-col gap-4">
             <PersonaListeners isRecording={isRecording} />
-            <FeedbackPreview />
+            <FeedbackPreview
+              feedback={feedbackState.data}
+              isLoading={feedbackState.status === "loading"}
+              error={feedbackState.error}
+            />
           </div>
         </div>
       </main>
