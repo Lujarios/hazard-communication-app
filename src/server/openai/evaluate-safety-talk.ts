@@ -84,8 +84,13 @@ export async function evaluateSafetyTalk({
       throw error;
     }
 
+    const detail =
+      error instanceof Error ? error.message : "Unknown evaluation error";
+
     throw new SafetyTalkEvaluationError(
-      "Failed to evaluate the safety talk. Please try again.",
+      process.env.NODE_ENV === "development"
+        ? detail
+        : "Failed to evaluate the safety talk. Please try again.",
       error,
     );
   }

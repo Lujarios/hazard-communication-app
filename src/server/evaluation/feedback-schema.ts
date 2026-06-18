@@ -39,7 +39,8 @@ export const missedItemResponseSchema = z.object({
   category: z.enum(["hazard", "control", "communication", "procedure", "engagement"]),
   description: z.string().min(1),
   severity: z.enum(["high", "medium", "info"]),
-  relatedHazardId: z.string().optional(),
+  /** Nullable required for OpenAI structured output (use null when not applicable). */
+  relatedHazardId: z.string().nullable(),
 });
 
 export const personaFeedbackResponseSchema = z.object({
@@ -95,7 +96,7 @@ export function toSafetyTalkFeedback(
     category: item.category,
     description: item.description,
     severity: item.severity,
-    relatedHazardId: item.relatedHazardId,
+    relatedHazardId: item.relatedHazardId ?? undefined,
   }));
 
   const returnedPersonaIds = new Set(
