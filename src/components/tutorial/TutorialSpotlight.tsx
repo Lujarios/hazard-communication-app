@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useId, useState } from "react";
+import { useCallback, useEffect, useId, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { ChevronLeft, ChevronRight, X } from "lucide-react";
 
@@ -13,6 +13,7 @@ import {
   CardTitle,
 } from "~/components/ui/card";
 import { useTutorial } from "~/hooks/use-tutorial";
+import { useEscapeKey, useFocusTrap } from "~/hooks/use-tutorial-a11y";
 import { SPOTLIGHT_STEPS } from "~/lib/tutorial-steps";
 import type { TourTargetId } from "~/types/tutorial";
 import { cn } from "~/lib/utils";
@@ -148,6 +149,13 @@ function SpotlightRing({ rect }: { rect: TargetRect | null }) {
   );
 }
 
+function isCrampedTarget(rect: TargetRect): boolean {
+  return (
+    rect.height > window.innerHeight * 0.55 ||
+    rect.width > window.innerWidth * 0.9
+  );
+}
+
 function getAnchoredTooltipStyle(rect: TargetRect): React.CSSProperties {
   const maxWidth = Math.min(320, window.innerWidth - 32);
   const left = Math.max(
@@ -177,9 +185,11 @@ function getAnchoredTooltipStyle(rect: TargetRect): React.CSSProperties {
 }
 
 export function TutorialSpotlight() {
+  const dialogRef = useRef<HTMLDivElement>(null);
   const maskId = useId().replace(/:/g, "");
   const titleId = useId();
   const descriptionId = useId();
+  const howToUseId = useId();
 
   const {
     phase,
@@ -197,22 +207,22 @@ export function TutorialSpotlight() {
   const isCompact = useCompactLayout();
   const targetRect = useTargetRect(step?.target ?? null, isOpen);
 
+  useEscapeKey(close, isOpen);
+  useFocusTrap(dialogRef, isOpen, spotlightIndex);
+
   useEffect(() => {
-    if (!isOpen) return;
+    if (!isOpen || !step) return;
 
-    const previousOverflow = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
-
-    return () => {
-      document.body.style.overflow = previousOverflow;
-    };
-  }, [isOpen]);
+    const element = document.querySelector(`[data-tour="${step.target}"]`);
+    element?.scrollIntoView({ block: "nearest", behavior: "smooth" });
+  }, [isOpen, step, spotlightIndex]);
 
   if (!isOpen || !step) {
     return null;
   }
 
-  const useCenteredTooltip = isCompact || !targetRect;
+  const useCenteredTooltip =
+    isCompact || !targetRect || isCrampedTarget(targetRect);
   const tooltipStyle = useCenteredTooltip
     ? undefined
     : getAnchoredTooltipStyle(targetRect);
@@ -222,18 +232,21 @@ export function TutorialSpotlight() {
       <SpotlightOverlay rect={targetRect} maskId={maskId} />
       <SpotlightRing rect={targetRect} />
 
-      <Card
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby={titleId}
-        aria-describedby={descriptionId}
-        className={cn(
-          "pointer-events-auto gap-0 py-0 ring-1 ring-slate-200",
-          useCenteredTooltip &&
-            "fixed bottom-6 left-1/2 w-[min(100vw-2rem,20rem)] -translate-x-1/2",
-        )}
-        style={tooltipStyle}
-      >
+      <div ref={dialogRef} className={cn(useCenteredTooltip && "contents")}>
+        <Card
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby={titleId}
+          aria-describedby={
+            step.howToUse ? `${descriptionId} ${howToUseId}` : descriptionId
+          }
+          className={cn(
+            "pointer-events-auto gap-0 py-0 ring-1 ring-slate-200",
+            useCenteredTooltip &&
+              "fixed bottom-6 left-1/2 w-[min(100vw-2rem,20rem)] -translate-x-1/2",
+          )}
+          style={tooltipStyle}
+        >
         <CardHeader className="flex flex-row items-start justify-between gap-3 border-b border-slate-100 py-3 pb-3">
           <div className="min-w-0 space-y-1">
             <p className="text-xs font-medium text-slate-500">
@@ -266,7 +279,10 @@ export function TutorialSpotlight() {
             {step.body}
           </p>
           {step.howToUse && (
-            <div className="rounded-lg bg-[#1e4a8c]/5 px-3 py-2.5 ring-1 ring-[#1e4a8c]/10">
+            <div
+              id={howToUseId}
+              className="rounded-lg bg-[#1e4a8c]/5 px-3 py-2.5 ring-1 ring-[#1e4a8c]/10"
+            >
               <p className="text-xs font-semibold uppercase tracking-wide text-[#1e4a8c]">
                 How to use
               </p>
@@ -308,7 +324,8 @@ export function TutorialSpotlight() {
             </Button>
           )}
         </CardFooter>
-      </Card>
+        </Card>
+      </div>
     </div>,
     document.body,
   );

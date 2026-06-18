@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useId } from "react";
+import { useId, useRef } from "react";
 import { createPortal } from "react-dom";
 import {
   ArrowRight,
@@ -29,6 +29,7 @@ import {
   CardTitle,
 } from "~/components/ui/card";
 import { useTutorial } from "~/hooks/use-tutorial";
+import { useEscapeKey, useFocusTrap } from "~/hooks/use-tutorial-a11y";
 import { INTRO_SLIDES } from "~/lib/tutorial-steps";
 import type { IntroSlideVisual } from "~/types/tutorial";
 
@@ -145,6 +146,7 @@ function IntroSlideInfographic({ visual }: { visual: IntroSlideVisual }) {
 }
 
 export function TutorialIntroModal() {
+  const dialogRef = useRef<HTMLDivElement>(null);
   const titleId = useId();
   const descriptionId = useId();
   const {
@@ -162,16 +164,8 @@ export function TutorialIntroModal() {
   const isFirstSlide = introIndex === 0;
   const isLastSlide = introIndex === INTRO_SLIDES.length - 1;
 
-  useEffect(() => {
-    if (!isOpen) return;
-
-    const previousOverflow = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
-
-    return () => {
-      document.body.style.overflow = previousOverflow;
-    };
-  }, [isOpen]);
+  useEscapeKey(close, isOpen);
+  useFocusTrap(dialogRef, isOpen, introIndex);
 
   if (!isOpen || !slide) {
     return null;
@@ -186,13 +180,14 @@ export function TutorialIntroModal() {
         onClick={close}
       />
 
-      <Card
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby={titleId}
-        aria-describedby={descriptionId}
-        className="relative z-10 w-full max-w-lg gap-0 py-0 ring-1 ring-slate-200"
-      >
+      <div ref={dialogRef} className="relative z-10 w-full max-w-lg">
+        <Card
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby={titleId}
+          aria-describedby={descriptionId}
+          className="gap-0 py-0 ring-1 ring-slate-200"
+        >
         <CardHeader className="flex flex-row items-start justify-between gap-3 border-b border-slate-100 py-4 pb-4">
           <div className="min-w-0 space-y-1">
             <p className="text-xs font-medium text-slate-500">
@@ -265,7 +260,8 @@ export function TutorialIntroModal() {
             </Button>
           )}
         </CardFooter>
-      </Card>
+        </Card>
+      </div>
     </div>,
     document.body,
   );

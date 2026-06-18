@@ -3,6 +3,7 @@
 import {
   createContext,
   useCallback,
+  useEffect,
   useMemo,
   useState,
   type ReactNode,
@@ -97,6 +98,17 @@ export function TutorialProvider({ children }: TutorialProviderProps) {
       return prev;
     });
   }, []);
+
+  useEffect(() => {
+    if (state.phase === "closed") return;
+
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+
+    return () => {
+      document.body.style.overflow = previousOverflow;
+    };
+  }, [state.phase]);
 
   const value = useMemo<TutorialContextValue>(
     () => ({
