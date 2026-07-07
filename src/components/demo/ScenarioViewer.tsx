@@ -4,14 +4,21 @@ import { Info, Maximize2, ZoomIn, ZoomOut } from "lucide-react";
 import { Badge } from "~/components/ui/badge";
 import { Button } from "~/components/ui/button";
 import { Card, CardContent } from "~/components/ui/card";
-import {
-  hazardLabels,
-  hazardSeverityStyles,
-  scenario,
-} from "~/lib/demo-data";
+import { hazardSeverityStyles, type HazardLabel } from "~/lib/demo-data";
+import type { AssessmentScenario } from "~/types/assessment";
 import { cn } from "~/lib/utils";
 
-export function ScenarioViewer({ className }: { className?: string }) {
+type ScenarioViewerProps = {
+  className?: string;
+  scenario: AssessmentScenario;
+  hazardLabels?: HazardLabel[];
+};
+
+export function ScenarioViewer({
+  className,
+  scenario,
+  hazardLabels,
+}: ScenarioViewerProps) {
   return (
     <Card
       data-tour="scenario"
@@ -24,19 +31,27 @@ export function ScenarioViewer({ className }: { className?: string }) {
         <Info className="size-4 shrink-0 opacity-70" aria-hidden />
       </div>
 
+      {scenario.description ? (
+        <div className="border-b border-slate-100 bg-slate-50 px-4 py-3">
+          <p className="text-sm leading-relaxed text-slate-700">
+            {scenario.description}
+          </p>
+        </div>
+      ) : null}
+
       <CardContent className="relative p-0">
         <div className="relative w-full">
           <Image
             src={scenario.imageSrc}
             alt={scenario.imageAlt}
-            width={scenario.imageWidth}
-            height={scenario.imageHeight}
+            width={1672}
+            height={941}
             className="block h-auto w-full"
             sizes="(max-width: 1024px) 100vw, 66vw"
             priority
           />
 
-          {hazardLabels.map((hazard) => {
+          {hazardLabels?.map((hazard) => {
             const styles = hazardSeverityStyles[hazard.severity];
             return (
               <Badge

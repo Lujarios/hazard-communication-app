@@ -12,10 +12,13 @@ const navItems = [
   { label: "Dashboard", icon: LayoutDashboard },
   { label: "Reports", icon: FileText },
   { label: "Settings", icon: Settings },
-  { label: "Help", icon: CircleHelp },
 ] as const;
 
-export function AppHeader() {
+type AppHeaderProps = {
+  onHelpClick?: () => void;
+};
+
+export function AppHeader({ onHelpClick }: AppHeaderProps) {
   return (
     <header className="border-b border-slate-200 bg-white">
       <div className="mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-4 px-4 py-3">
@@ -54,6 +57,17 @@ export function AppHeader() {
               {label}
             </button>
           ))}
+          <button
+            type="button"
+            className="inline-flex items-center gap-1.5 rounded-lg px-3 py-2 text-sm text-slate-600 transition-colors hover:bg-slate-100 hover:text-slate-900 disabled:cursor-not-allowed disabled:opacity-50"
+            disabled={!onHelpClick}
+            aria-disabled={!onHelpClick}
+            aria-label="Open help tutorial"
+            onClick={onHelpClick}
+          >
+            <CircleHelp className="size-4" />
+            Help
+          </button>
         </nav>
 
         <div

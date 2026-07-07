@@ -100,7 +100,7 @@ export function TutorialProvider({ children }: TutorialProviderProps) {
   }, []);
 
   useEffect(() => {
-    if (state.phase === "closed") return;
+    if (state.phase !== "intro") return;
 
     const previousOverflow = document.body.style.overflow;
     document.body.style.overflow = "hidden";

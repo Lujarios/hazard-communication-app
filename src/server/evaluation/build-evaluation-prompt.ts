@@ -1,13 +1,14 @@
-import { workerPersonas } from "~/lib/demo-data";
 import { formatRubricForPrompt } from "~/lib/safety-rubric";
 import {
   formatAnswerKeyForPrompt,
   type ScenarioAnswerKey,
 } from "~/lib/scenario-answer-keys";
+import type { EvaluationPersona } from "~/server/scenarios/load-evaluation-context";
 
 export type EvaluationPromptInput = {
   transcript: string;
   answerKey: ScenarioAnswerKey;
+  personas: EvaluationPersona[];
 };
 
 export type EvaluationPromptMessages = {
@@ -15,11 +16,11 @@ export type EvaluationPromptMessages = {
   user: string;
 };
 
-function formatPersonasForPrompt(): string {
-  return workerPersonas
+function formatPersonasForPrompt(personas: EvaluationPersona[]): string {
+  return personas
     .map(
       (persona) =>
-        `- ${persona.name} (id: ${persona.id}): ${persona.description}`,
+        `- ${persona.name} (id: ${persona.id}): ${persona.description}. ${persona.evaluationInstructions}`,
     )
     .join("\n");
 }
@@ -27,6 +28,7 @@ function formatPersonasForPrompt(): string {
 export function buildEvaluationPrompt({
   transcript,
   answerKey,
+  personas,
 }: EvaluationPromptInput): EvaluationPromptMessages {
   const system = [
     "You are an expert construction safety trainer evaluating a trainee's spoken pre-job hazard communication.",
@@ -49,7 +51,7 @@ export function buildEvaluationPrompt({
     formatRubricForPrompt(),
     "",
     "## Worker personas (for personaFeedback)",
-    formatPersonasForPrompt(),
+    formatPersonasForPrompt(personas),
   ].join("\n");
 
   const user = [

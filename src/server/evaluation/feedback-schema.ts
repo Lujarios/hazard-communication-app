@@ -1,6 +1,5 @@
 import { z } from "zod";
 
-import { workerPersonas } from "~/lib/demo-data";
 import { safetyRubricCriteria } from "~/lib/safety-rubric";
 import type {
   CriterionRating,
@@ -11,14 +10,9 @@ import type {
 } from "~/types/feedback";
 
 export const rubricCriterionIds = safetyRubricCriteria.map((c) => c.id);
-export const workerPersonaIds = workerPersonas.map((persona) => persona.id);
 
 const rubricCriterionIdSchema = z.enum(
   rubricCriterionIds as [string, ...string[]],
-);
-
-const workerPersonaIdSchema = z.enum(
-  workerPersonaIds as [string, ...string[]],
 );
 
 export const starRatingSchema = z.union([
@@ -43,21 +37,33 @@ export const missedItemResponseSchema = z.object({
   relatedHazardId: z.string().nullable(),
 });
 
-export const personaFeedbackResponseSchema = z.object({
-  personaId: workerPersonaIdSchema,
-  reaction: z.string().min(1),
-  understood: z.boolean(),
-});
+export function createSafetyTalkEvaluationResponseSchema(
+  personaIds: string[],
+) {
+  if (personaIds.length === 0) {
+    throw new Error("At least one persona is required for evaluation.");
+  }
 
-export const safetyTalkEvaluationResponseSchema = z.object({
-  criteriaRatings: z.array(criterionRatingResponseSchema),
-  missedItems: z.array(missedItemResponseSchema),
-  overallSummary: z.string().min(1),
-  personaFeedback: z.array(personaFeedbackResponseSchema),
-});
+  const workerPersonaIdSchema = z.enum(
+    personaIds as [string, ...string[]],
+  );
+
+  const personaFeedbackResponseSchema = z.object({
+    personaId: workerPersonaIdSchema,
+    reaction: z.string().min(1),
+    understood: z.boolean(),
+  });
+
+  return z.object({
+    criteriaRatings: z.array(criterionRatingResponseSchema),
+    missedItems: z.array(missedItemResponseSchema),
+    overallSummary: z.string().min(1),
+    personaFeedback: z.array(personaFeedbackResponseSchema),
+  });
+}
 
 export type SafetyTalkEvaluationResponse = z.infer<
-  typeof safetyTalkEvaluationResponseSchema
+  ReturnType<typeof createSafetyTalkEvaluationResponseSchema>
 >;
 
 export function computeOverallStars(ratings: CriterionRating[]): StarRating {
@@ -74,6 +80,7 @@ export function computeOverallStars(ratings: CriterionRating[]): StarRating {
 
 export function toSafetyTalkFeedback(
   response: SafetyTalkEvaluationResponse,
+  expectedPersonaIds: string[],
 ): SafetyTalkFeedback {
   const criteriaRatings: CriterionRating[] = response.criteriaRatings.map(
     (rating) => ({
@@ -102,7 +109,7 @@ export function toSafetyTalkFeedback(
   const returnedPersonaIds = new Set(
     response.personaFeedback.map((item) => item.personaId),
   );
-  const missingPersonas = workerPersonaIds.filter(
+  const missingPersonas = expectedPersonaIds.filter(
     (id) => !returnedPersonaIds.has(id),
   );
 

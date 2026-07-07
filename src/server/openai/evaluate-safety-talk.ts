@@ -9,9 +9,10 @@ import type { SafetyTalkFeedback } from "~/types/feedback";
 
 import { buildEvaluationPrompt } from "~/server/evaluation/build-evaluation-prompt";
 import {
-  safetyTalkEvaluationResponseSchema,
+  createSafetyTalkEvaluationResponseSchema,
   toSafetyTalkFeedback,
 } from "~/server/evaluation/feedback-schema";
+import type { EvaluationPersona } from "~/server/scenarios/load-evaluation-context";
 
 const EVALUATION_MODEL = "gpt-4o-mini";
 
@@ -25,6 +26,7 @@ function getOpenAIClient(): OpenAI {
 export type EvaluateSafetyTalkInput = {
   transcript: string;
   answerKey: ScenarioAnswerKey;
+  personas: EvaluationPersona[];
 };
 
 export class SafetyTalkEvaluationError extends Error {
@@ -40,6 +42,7 @@ export class SafetyTalkEvaluationError extends Error {
 export async function evaluateSafetyTalk({
   transcript,
   answerKey,
+  personas,
 }: EvaluateSafetyTalkInput): Promise<SafetyTalkFeedback> {
   const trimmedTranscript = transcript.trim();
 
@@ -49,9 +52,20 @@ export async function evaluateSafetyTalk({
     );
   }
 
+  if (personas.length === 0) {
+    throw new SafetyTalkEvaluationError(
+      "This scenario has no AI personas configured for evaluation.",
+    );
+  }
+
+  const responseSchema = createSafetyTalkEvaluationResponseSchema(
+    personas.map((persona) => persona.id),
+  );
+
   const { system, user } = buildEvaluationPrompt({
     transcript: trimmedTranscript,
     answerKey,
+    personas,
   });
 
   try {
@@ -62,7 +76,7 @@ export async function evaluateSafetyTalk({
         { role: "user", content: user },
       ],
       response_format: zodResponseFormat(
-        safetyTalkEvaluationResponseSchema,
+        responseSchema,
         "safety_talk_evaluation",
       ),
     });
@@ -78,7 +92,10 @@ export async function evaluateSafetyTalk({
       );
     }
 
-    return toSafetyTalkFeedback(parsed);
+    return toSafetyTalkFeedback(
+      parsed,
+      personas.map((persona) => persona.id),
+    );
   } catch (error) {
     if (error instanceof SafetyTalkEvaluationError) {
       throw error;

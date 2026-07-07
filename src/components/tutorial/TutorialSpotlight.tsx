@@ -20,6 +20,7 @@ import { cn } from "~/lib/utils";
 
 const SPOTLIGHT_PADDING = 4;
 const TOOLTIP_GAP = 12;
+const TOOLTIP_ESTIMATED_HEIGHT = 300;
 const COMPACT_BREAKPOINT = 1024;
 
 type TargetRect = {
@@ -27,6 +28,11 @@ type TargetRect = {
   left: number;
   width: number;
   height: number;
+};
+
+type TooltipPlacement = {
+  centered: boolean;
+  style?: React.CSSProperties;
 };
 
 function toTargetRect(rect: DOMRect): TargetRect {
@@ -98,7 +104,7 @@ function SpotlightOverlay({
   if (!rect) {
     return (
       <div
-        className="pointer-events-auto fixed inset-0 z-50 bg-black/60"
+        className="pointer-events-auto absolute inset-0 bg-black/60"
         aria-hidden
       />
     );
@@ -106,7 +112,7 @@ function SpotlightOverlay({
 
   return (
     <svg
-      className="pointer-events-auto fixed inset-0 z-50 h-full w-full"
+      className="pointer-events-auto absolute inset-0 h-full w-full"
       aria-hidden
     >
       <defs>
@@ -137,7 +143,7 @@ function SpotlightRing({ rect }: { rect: TargetRect | null }) {
 
   return (
     <div
-      className="pointer-events-none fixed z-[51] rounded-lg ring-2 ring-[#1e4a8c] ring-offset-2 ring-offset-transparent"
+      className="pointer-events-none absolute rounded-lg ring-2 ring-[#1e4a8c] ring-offset-2 ring-offset-transparent"
       style={{
         top: rect.top,
         left: rect.left,
@@ -156,31 +162,62 @@ function isCrampedTarget(rect: TargetRect): boolean {
   );
 }
 
-function getAnchoredTooltipStyle(rect: TargetRect): React.CSSProperties {
+function getCenteredTooltipStyle(): React.CSSProperties {
+  return {
+    position: "fixed",
+    bottom: 24,
+    left: "50%",
+    transform: "translateX(-50%)",
+    width: "min(100vw - 2rem, 20rem)",
+    zIndex: 2,
+  };
+}
+
+function getTooltipPlacement(
+  rect: TargetRect | null,
+  isCompact: boolean,
+): TooltipPlacement {
+  if (!rect || isCompact || isCrampedTarget(rect)) {
+    return { centered: true, style: getCenteredTooltipStyle() };
+  }
+
   const maxWidth = Math.min(320, window.innerWidth - 32);
   const left = Math.max(
     16,
     Math.min(rect.left, window.innerWidth - maxWidth - 16),
   );
-  const spaceBelow = window.innerHeight - (rect.top + rect.height);
-  const placeBelow = spaceBelow >= 220;
+  const belowTop = rect.top + rect.height + TOOLTIP_GAP;
+  const fitsBelow =
+    belowTop + TOOLTIP_ESTIMATED_HEIGHT <= window.innerHeight - 16;
+  const fitsAbove =
+    rect.top - TOOLTIP_GAP - TOOLTIP_ESTIMATED_HEIGHT >= 16;
 
-  if (placeBelow) {
+  if (!fitsBelow && !fitsAbove) {
+    return { centered: true, style: getCenteredTooltipStyle() };
+  }
+
+  if (fitsBelow) {
     return {
-      position: "fixed",
-      top: rect.top + rect.height + TOOLTIP_GAP,
-      left,
-      width: maxWidth,
-      zIndex: 52,
+      centered: false,
+      style: {
+        position: "fixed",
+        top: belowTop,
+        left,
+        width: maxWidth,
+        zIndex: 2,
+      },
     };
   }
 
   return {
-    position: "fixed",
-    top: Math.max(16, rect.top - TOOLTIP_GAP - 220),
-    left,
-    width: maxWidth,
-    zIndex: 52,
+    centered: false,
+    style: {
+      position: "fixed",
+      top: Math.max(16, rect.top - TOOLTIP_GAP - TOOLTIP_ESTIMATED_HEIGHT),
+      left,
+      width: maxWidth,
+      zIndex: 2,
+    },
   };
 }
 
@@ -214,25 +251,27 @@ export function TutorialSpotlight() {
     if (!isOpen || !step) return;
 
     const element = document.querySelector(`[data-tour="${step.target}"]`);
-    element?.scrollIntoView({ block: "nearest", behavior: "smooth" });
+    element?.scrollIntoView({ block: "center", behavior: "smooth" });
   }, [isOpen, step, spotlightIndex]);
 
   if (!isOpen || !step) {
     return null;
   }
 
-  const useCenteredTooltip =
-    isCompact || !targetRect || isCrampedTarget(targetRect);
-  const tooltipStyle = useCenteredTooltip
-    ? undefined
-    : getAnchoredTooltipStyle(targetRect);
+  const { centered: useCenteredTooltip, style: tooltipStyle } =
+    getTooltipPlacement(targetRect, isCompact);
 
   return createPortal(
-    <div className="pointer-events-none fixed inset-0 z-50">
-      <SpotlightOverlay rect={targetRect} maskId={maskId} />
-      <SpotlightRing rect={targetRect} />
+    <div className="fixed inset-0 z-[100]">
+      <div className="pointer-events-none absolute inset-0">
+        <SpotlightOverlay rect={targetRect} maskId={maskId} />
+        <SpotlightRing rect={targetRect} />
+      </div>
 
-      <div ref={dialogRef} className={cn(useCenteredTooltip && "contents")}>
+      <div
+        ref={dialogRef}
+        className="pointer-events-none absolute inset-0 z-[1]"
+      >
         <Card
           role="dialog"
           aria-modal="true"
@@ -241,89 +280,88 @@ export function TutorialSpotlight() {
             step.howToUse ? `${descriptionId} ${howToUseId}` : descriptionId
           }
           className={cn(
-            "pointer-events-auto gap-0 py-0 ring-1 ring-slate-200",
-            useCenteredTooltip &&
-              "fixed bottom-6 left-1/2 w-[min(100vw-2rem,20rem)] -translate-x-1/2",
+            "pointer-events-auto gap-0 bg-white py-0 shadow-xl ring-1 ring-slate-200",
+            useCenteredTooltip && "max-h-[min(70vh,32rem)] overflow-y-auto",
           )}
           style={tooltipStyle}
         >
-        <CardHeader className="flex flex-row items-start justify-between gap-3 border-b border-slate-100 py-3 pb-3">
-          <div className="min-w-0 space-y-1">
-            <p className="text-xs font-medium text-slate-500">
-              Tour step {spotlightIndex + 1} of {SPOTLIGHT_STEPS.length}
-            </p>
-            <CardTitle
-              id={titleId}
-              className="text-base font-semibold text-slate-900"
-            >
-              {step.title}
-            </CardTitle>
-          </div>
-          <Button
-            type="button"
-            variant="ghost"
-            size="icon-sm"
-            className="shrink-0 text-slate-500 hover:text-slate-900"
-            onClick={close}
-            aria-label="Close tutorial"
-          >
-            <X className="size-4" />
-          </Button>
-        </CardHeader>
-
-        <CardContent className="space-y-3 py-3">
-          <p
-            id={descriptionId}
-            className="text-sm leading-relaxed text-slate-600"
-          >
-            {step.body}
-          </p>
-          {step.howToUse && (
-            <div
-              id={howToUseId}
-              className="rounded-lg bg-[#1e4a8c]/5 px-3 py-2.5 ring-1 ring-[#1e4a8c]/10"
-            >
-              <p className="text-xs font-semibold uppercase tracking-wide text-[#1e4a8c]">
-                How to use
+          <CardHeader className="flex flex-row items-start justify-between gap-3 border-b border-slate-100 py-3 pb-3">
+            <div className="min-w-0 space-y-1">
+              <p className="text-xs font-medium text-slate-500">
+                Tour step {spotlightIndex + 1} of {SPOTLIGHT_STEPS.length}
               </p>
-              <p className="mt-1 text-xs leading-relaxed text-slate-700">
-                {step.howToUse}
-              </p>
+              <CardTitle
+                id={titleId}
+                className="text-base font-semibold text-slate-900"
+              >
+                {step.title}
+              </CardTitle>
             </div>
-          )}
-        </CardContent>
-
-        <CardFooter className="flex items-center justify-between gap-3 border-t border-slate-100 bg-slate-50/80 py-3">
-          {!isFirstStep ? (
-            <Button type="button" variant="outline" size="sm" onClick={back}>
-              <ChevronLeft className="size-4" />
-              Back
-            </Button>
-          ) : (
-            <div />
-          )}
-
-          {isLastStep ? (
             <Button
               type="button"
-              size="sm"
-              className="bg-[#1e4a8c] hover:bg-[#163a6e]"
-              onClick={finish}
+              variant="ghost"
+              size="icon-sm"
+              className="shrink-0 text-slate-500 hover:text-slate-900"
+              onClick={close}
+              aria-label="Close tutorial"
             >
-              Finish
+              <X className="size-4" />
             </Button>
-          ) : (
-            <Button
-              type="button"
-              size="sm"
-              className="bg-[#1e4a8c] hover:bg-[#163a6e]"
-              onClick={next}
+          </CardHeader>
+
+          <CardContent className="space-y-3 py-3">
+            <p
+              id={descriptionId}
+              className="text-sm leading-relaxed text-slate-600"
             >
-              Next
-              <ChevronRight className="size-4" />
-            </Button>
-          )}
-        </CardFooter>
+              {step.body}
+            </p>
+            {step.howToUse && (
+              <div
+                id={howToUseId}
+                className="rounded-lg bg-[#1e4a8c]/5 px-3 py-2.5 ring-1 ring-[#1e4a8c]/10"
+              >
+                <p className="text-xs font-semibold uppercase tracking-wide text-[#1e4a8c]">
+                  How to use
+                </p>
+                <p className="mt-1 text-xs leading-relaxed text-slate-700">
+                  {step.howToUse}
+                </p>
+              </div>
+            )}
+          </CardContent>
+
+          <CardFooter className="flex items-center justify-between gap-3 border-t border-slate-100 bg-slate-50/80 py-3">
+            {!isFirstStep ? (
+              <Button type="button" variant="outline" size="sm" onClick={back}>
+                <ChevronLeft className="size-4" />
+                Back
+              </Button>
+            ) : (
+              <div />
+            )}
+
+            {isLastStep ? (
+              <Button
+                type="button"
+                size="sm"
+                className="bg-[#1e4a8c] hover:bg-[#163a6e]"
+                onClick={finish}
+              >
+                Finish
+              </Button>
+            ) : (
+              <Button
+                type="button"
+                size="sm"
+                className="bg-[#1e4a8c] hover:bg-[#163a6e]"
+                onClick={next}
+              >
+                Next
+                <ChevronRight className="size-4" />
+              </Button>
+            )}
+          </CardFooter>
         </Card>
       </div>
     </div>,

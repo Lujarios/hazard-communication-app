@@ -69,8 +69,8 @@ export function ScenarioShareLink({
           </Button>
         </div>
         <p className="text-xs text-slate-500">
-          Dynamic assessment loading from saved scenarios is not wired up yet.
-          This link confirms the scenario ID for future trainee routes.
+          Share this link with trainees to open the full assessment experience for
+          this scenario.
         </p>
       </CardContent>
     </Card>

@@ -83,9 +83,19 @@ function mapZodErrors(error: z.ZodError): FormErrors {
   };
 }
 
-export function ScenarioBuilderForm() {
+type ScenarioBuilderFormProps = {
+  mode?: "create" | "edit";
+  scenarioId?: string;
+  initialValues?: ScenarioFormValues;
+};
+
+export function ScenarioBuilderForm({
+  mode = "create",
+  scenarioId,
+  initialValues,
+}: ScenarioBuilderFormProps) {
   const [formValues, setFormValues] = useState<ScenarioFormValues>(
-    initialScenarioFormValues,
+    initialValues ?? initialScenarioFormValues(),
   );
   const [errors, setErrors] = useState<FormErrors>({});
   const [savedScenario, setSavedScenario] = useState<{
@@ -107,6 +117,22 @@ export function ScenarioBuilderForm() {
       });
     },
   });
+
+  const updateScenario = api.scenario.update.useMutation({
+    onSuccess: (scenario) => {
+      setSavedScenario({ id: scenario.id, title: scenario.title });
+      setErrors({});
+    },
+    onError: (error) => {
+      setErrors({
+        form:
+          error.message ||
+          "Unable to update the scenario. Check your inputs and try again.",
+      });
+    },
+  });
+
+  const isSaving = createScenario.isPending || updateScenario.isPending;
 
   const updateForm = (partial: Partial<ScenarioFormValues>) => {
     setFormValues((current) => ({ ...current, ...partial }));
@@ -145,6 +171,15 @@ export function ScenarioBuilderForm() {
       return;
     }
 
+    if (mode === "edit" && scenarioId) {
+      updateScenario.mutate({
+        id: scenarioId,
+        ...validation.data,
+        status: formValues.status,
+      });
+      return;
+    }
+
     createScenario.mutate({
       ...validation.data,
       status: formValues.status,
@@ -163,10 +198,14 @@ export function ScenarioBuilderForm() {
           variant="outline"
           onClick={() => {
             setSavedScenario(null);
+            if (mode === "edit" && initialValues) {
+              setFormValues(initialValues);
+              return;
+            }
             setFormValues(initialScenarioFormValues());
           }}
         >
-          Create another scenario
+          {mode === "edit" ? "Edit again" : "Create another scenario"}
         </Button>
       </div>
     );
@@ -295,9 +334,15 @@ export function ScenarioBuilderForm() {
         <Button
           type="submit"
           className="bg-[#1e4a8c] hover:bg-[#1e4a8c]/90"
-          disabled={createScenario.isPending}
+          disabled={isSaving}
         >
-          {createScenario.isPending ? "Saving scenario…" : "Save scenario"}
+          {isSaving
+            ? mode === "edit"
+              ? "Saving changes…"
+              : "Saving scenario…"
+            : mode === "edit"
+              ? "Save changes"
+              : "Save scenario"}
         </Button>
         <p className="text-xs text-slate-500">
           Scenarios are saved as ready to share. Draft status support can be

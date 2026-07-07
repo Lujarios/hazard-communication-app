@@ -13,7 +13,6 @@ import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card";
 import { Separator } from "~/components/ui/separator";
 import { Textarea } from "~/components/ui/textarea";
 import { useSpeechRecognition } from "~/hooks/use-speech-recognition";
-import { scenario } from "~/lib/demo-data";
 // import { transcribeAudioViaAws } from "~/lib/transcription-placeholder";
 import { cn } from "~/lib/utils";
 import { api } from "~/trpc/react";
@@ -42,12 +41,14 @@ function SignalBars() {
 
 type TranscriptionPanelProps = {
   className?: string;
+  scenarioId: string;
   onRecordingChange?: (isRecording: boolean) => void;
   onFeedbackStateChange?: (state: FeedbackState) => void;
 };
 
 export function TranscriptionPanel({
   className,
+  scenarioId,
   onRecordingChange,
   onFeedbackStateChange,
 }: TranscriptionPanelProps) {
@@ -137,7 +138,7 @@ export function TranscriptionPanel({
 
   const handleGetFeedback = () => {
     evaluateFeedback.mutate({
-      scenarioId: scenario.id,
+      scenarioId,
       transcript: transcript.trim(),
     });
   };

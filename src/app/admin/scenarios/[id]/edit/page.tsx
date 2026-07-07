@@ -1,9 +1,25 @@
 import Link from "next/link";
+import { notFound } from "next/navigation";
 
 import { ScenarioBuilderForm } from "~/components/admin/ScenarioBuilderForm";
 import { AppHeader } from "~/components/demo/AppHeader";
+import { toScenarioFormValues } from "~/types/scenario";
+import { api } from "~/trpc/server";
 
-export default function NewScenarioPage() {
+type EditScenarioPageProps = {
+  params: Promise<{ id: string }>;
+};
+
+export default async function EditScenarioPage({ params }: EditScenarioPageProps) {
+  const { id } = await params;
+
+  let scenario;
+  try {
+    scenario = await api.scenario.getById({ id });
+  } catch {
+    notFound();
+  }
+
   return (
     <div className="min-h-screen bg-slate-50">
       <AppHeader />
@@ -14,18 +30,21 @@ export default function NewScenarioPage() {
             Admin
           </p>
           <h1 className="text-2xl font-bold tracking-tight text-slate-900">
-            Create scenario
+            Edit scenario
           </h1>
           <p className="text-sm text-slate-600">
-            Build a workplace safety scenario with hazards, controls, and AI
-            listener personas.{" "}
+            Update scenario details, hazards, and personas.{" "}
             <Link href="/admin/scenarios" className="text-[#1e4a8c] hover:underline">
-              View all scenarios
+              Back to scenarios
             </Link>
           </p>
         </div>
 
-        <ScenarioBuilderForm />
+        <ScenarioBuilderForm
+          mode="edit"
+          scenarioId={scenario.id}
+          initialValues={toScenarioFormValues(scenario)}
+        />
       </main>
     </div>
   );

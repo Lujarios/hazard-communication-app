@@ -12,7 +12,7 @@ import {
 import { Avatar, AvatarFallback } from "~/components/ui/avatar";
 import { Badge } from "~/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card";
-import { workerPersonas } from "~/lib/demo-data";
+import type { AssessmentPersona } from "~/types/assessment";
 import type { PersonaFeedback } from "~/types/feedback";
 import { cn } from "~/lib/utils";
 
@@ -45,6 +45,7 @@ function getPersonaFeedback(
 
 type PersonaListenersProps = {
   className?: string;
+  personas: AssessmentPersona[];
   isRecording?: boolean;
   isEvaluating?: boolean;
   personaFeedback?: PersonaFeedback[];
@@ -121,6 +122,7 @@ function PersonaStatus({
 
 export function PersonaListeners({
   className,
+  personas,
   isRecording = false,
   isEvaluating = false,
   personaFeedback,
@@ -139,7 +141,7 @@ export function PersonaListeners({
 
       <CardContent className="flex min-h-0 flex-1 flex-col p-2">
         <ul className="m-0 flex flex-1 flex-col gap-1.5 p-0">
-          {workerPersonas.map((persona) => {
+          {personas.map((persona) => {
             const feedback = getPersonaFeedback(persona.id, personaFeedback);
 
             return (
