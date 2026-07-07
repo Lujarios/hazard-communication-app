@@ -1,28 +1,19 @@
-import { scenario, workerPersonas } from "~/lib/demo-data";
+import type { HazardLabel, HazardSeverity } from "~/lib/demo-data";
 import { getScenarioImagePath } from "~/lib/scenario-images";
 import type { AssessmentScenario } from "~/types/assessment";
-
-export const demoAssessmentScenario: AssessmentScenario = {
-  id: scenario.id,
-  title: scenario.title,
-  description:
-    "Review the construction site image. Identify visible hazards, explain why each is dangerous, and describe the controls workers should follow before work continues.",
-  imageSrc: scenario.imageSrc,
-  imageAlt: scenario.imageAlt,
-  personas: workerPersonas.map((persona) => ({
-    id: persona.id,
-    name: persona.name,
-    description: persona.description,
-    initials: persona.initials,
-    avatarColor: persona.avatarColor,
-  })),
-};
 
 type DbScenarioWithRelations = {
   id: string;
   title: string;
   description: string;
   imageFileName: string;
+  hazards: Array<{
+    id: string;
+    hazardTitle: string;
+    overlayTop: string | null;
+    overlayLeft: string | null;
+    severity: string | null;
+  }>;
   scenarioPersonas: Array<{
     persona: {
       id: string;
@@ -33,6 +24,31 @@ type DbScenarioWithRelations = {
     };
   }>;
 };
+
+function toHazardSeverity(value: string | null): HazardSeverity {
+  if (value === "high" || value === "medium" || value === "info") {
+    return value;
+  }
+  return "medium";
+}
+
+function buildHazardLabels(
+  hazards: DbScenarioWithRelations["hazards"],
+): HazardLabel[] | undefined {
+  const labels = hazards
+    .filter((hazard) => hazard.overlayTop && hazard.overlayLeft)
+    .map((hazard) => ({
+      id: hazard.id,
+      label: hazard.hazardTitle,
+      severity: toHazardSeverity(hazard.severity),
+      position: {
+        top: hazard.overlayTop!,
+        left: hazard.overlayLeft!,
+      },
+    }));
+
+  return labels.length > 0 ? labels : undefined;
+}
 
 export function toAssessmentScenario(
   dbScenario: DbScenarioWithRelations,
@@ -50,5 +66,6 @@ export function toAssessmentScenario(
       initials: persona.initials,
       avatarColor: persona.avatarColor,
     })),
+    hazardLabels: buildHazardLabels(dbScenario.hazards),
   };
 }

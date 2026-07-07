@@ -8,6 +8,10 @@ type DbHazard = {
   hazardDescription: string;
   controlDescription: string;
   locationNote: string | null;
+  overlayTop: string | null;
+  overlayLeft: string | null;
+  severity: string | null;
+  isLifeThreatening: boolean;
   sortOrder: number;
 };
 
@@ -16,16 +20,24 @@ type DbScenarioForAnswerKey = {
   title: string;
   description: string;
   imageFileName: string;
+  modelSummary: string | null;
   hazards: DbHazard[];
 };
 
-function defaultSeverity(index: number): HazardSeverity {
+function parseSeverity(value: string | null, index: number): HazardSeverity {
+  if (value === "high" || value === "medium" || value === "info") {
+    return value;
+  }
   if (index === 0) return "high";
   if (index < 3) return "medium";
   return "info";
 }
 
 function buildModelSummary(scenario: DbScenarioForAnswerKey): string {
+  if (scenario.modelSummary) {
+    return scenario.modelSummary;
+  }
+
   const hazardSummaries = scenario.hazards.map((hazard) => {
     const location = hazard.locationNote ? ` (${hazard.locationNote})` : "";
     return `${hazard.hazardTitle}${location}: ${hazard.hazardDescription} Control: ${hazard.controlDescription}`;
@@ -63,10 +75,13 @@ export function buildAnswerKeyFromDbScenario(
       return {
         id: hazard.id,
         name: hazard.hazardTitle,
-        severity: defaultSeverity(index),
-        isLifeThreatening: index === 0,
+        severity: parseSeverity(hazard.severity, index),
+        isLifeThreatening: hazard.isLifeThreatening,
         calloutPoints,
-        requiredControls: [hazard.controlDescription],
+        requiredControls: hazard.controlDescription
+          .split("\n")
+          .map((line) => line.trim())
+          .filter(Boolean),
       };
     }),
     modelSummary: buildModelSummary(scenario),

@@ -1,12 +1,8 @@
-import { AssessmentExperience } from "~/components/demo/AssessmentExperience";
-import { demoAssessmentScenario } from "~/lib/assessment-scenario";
+import { HomePage } from "~/components/home/HomePage";
+import { ensureConstructionSiteDemoSeeded } from "~/server/db/seed-construction-demo";
 
-export default function Home() {
-  return (
-    <AssessmentExperience
-      scenario={demoAssessmentScenario}
-      showTutorial
-      showDemoHazardOverlays
-    />
-  );
+export default async function Home() {
+  const demoScenarioId = await ensureConstructionSiteDemoSeeded();
+
+  return <HomePage demoScenarioId={demoScenarioId} />;
 }

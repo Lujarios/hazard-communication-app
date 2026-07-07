@@ -9,6 +9,7 @@ import {
   scenarioPersonas,
   scenarios,
 } from "~/server/db/schema";
+import { ensureAppSeeded } from "~/server/db/seed-construction-demo";
 import { ensurePersonasSeeded } from "~/server/db/seed-personas";
 
 type ScenarioRouterContext = Awaited<ReturnType<typeof createTRPCContext>>;
@@ -97,6 +98,8 @@ async function saveScenarioRelations(
 
 export const scenarioRouter = createTRPCRouter({
   list: publicProcedure.query(async ({ ctx }) => {
+    await ensureAppSeeded();
+
     return ctx.db.query.scenarios.findMany({
       orderBy: [desc(scenarios.updatedAt), desc(scenarios.createdAt)],
       with: {
@@ -121,6 +124,8 @@ export const scenarioRouter = createTRPCRouter({
   getById: publicProcedure
     .input(z.object({ id: z.string().uuid() }))
     .query(async ({ ctx, input }) => {
+      await ensureAppSeeded();
+
       const scenario = await ctx.db.query.scenarios.findFirst({
         where: (scenarioTable, { eq }) => eq(scenarioTable.id, input.id),
         with: {

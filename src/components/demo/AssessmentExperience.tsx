@@ -10,32 +10,22 @@ import { TranscriptionPanel } from "~/components/demo/TranscriptionPanel";
 import { TutorialIntroModal } from "~/components/tutorial/TutorialIntroModal";
 import { TutorialProvider } from "~/components/tutorial/TutorialProvider";
 import { TutorialSpotlight } from "~/components/tutorial/TutorialSpotlight";
-import { hazardLabels } from "~/lib/demo-data";
 import { useTutorial } from "~/hooks/use-tutorial";
 import type { AssessmentScenario } from "~/types/assessment";
 import { initialFeedbackState } from "~/types/feedback";
 
 type AssessmentExperienceProps = {
   scenario: AssessmentScenario;
-  showTutorial?: boolean;
-  showDemoHazardOverlays?: boolean;
 };
 
-function AssessmentExperienceContent({
-  scenario,
-  onHelpClick,
-  showDemoHazardOverlays = false,
-}: {
-  scenario: AssessmentScenario;
-  onHelpClick?: () => void;
-  showDemoHazardOverlays?: boolean;
-}) {
+function AssessmentExperienceContent({ scenario }: AssessmentExperienceProps) {
+  const { open } = useTutorial();
   const [isRecording, setIsRecording] = useState(false);
   const [feedbackState, setFeedbackState] = useState(initialFeedbackState);
 
   return (
     <div className="min-h-screen bg-slate-50">
-      <AppHeader onHelpClick={onHelpClick} />
+      <AppHeader onHelpClick={open} />
 
       <main className="mx-auto max-w-7xl px-4 py-6">
         <div className="flex flex-col gap-6">
@@ -43,7 +33,7 @@ function AssessmentExperienceContent({
             <ScenarioViewer
               className="min-w-0 lg:col-start-1 lg:row-start-1"
               scenario={scenario}
-              hazardLabels={showDemoHazardOverlays ? hazardLabels : undefined}
+              hazardLabels={scenario.hazardLabels}
             />
 
             <TranscriptionPanel
@@ -70,51 +60,16 @@ function AssessmentExperienceContent({
         </div>
       </main>
 
-      {onHelpClick ? (
-        <>
-          <TutorialIntroModal />
-          <TutorialSpotlight />
-        </>
-      ) : null}
+      <TutorialIntroModal />
+      <TutorialSpotlight />
     </div>
   );
 }
 
-function TutorialAssessmentContent({
-  scenario,
-  showDemoHazardOverlays,
-}: AssessmentExperienceProps) {
-  const { open } = useTutorial();
-
+export function AssessmentExperience({ scenario }: AssessmentExperienceProps) {
   return (
-    <AssessmentExperienceContent
-      scenario={scenario}
-      onHelpClick={open}
-      showDemoHazardOverlays={showDemoHazardOverlays}
-    />
-  );
-}
-
-export function AssessmentExperience({
-  scenario,
-  showTutorial = false,
-  showDemoHazardOverlays = false,
-}: AssessmentExperienceProps) {
-  if (showTutorial) {
-    return (
-      <TutorialProvider>
-        <TutorialAssessmentContent
-          scenario={scenario}
-          showDemoHazardOverlays={showDemoHazardOverlays}
-        />
-      </TutorialProvider>
-    );
-  }
-
-  return (
-    <AssessmentExperienceContent
-      scenario={scenario}
-      showDemoHazardOverlays={showDemoHazardOverlays}
-    />
+    <TutorialProvider>
+      <AssessmentExperienceContent scenario={scenario} />
+    </TutorialProvider>
   );
 }

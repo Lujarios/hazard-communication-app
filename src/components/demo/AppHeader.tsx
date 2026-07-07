@@ -1,17 +1,19 @@
+"use client";
+
 import Image from "next/image";
+import Link from "next/link";
+import { usePathname } from "next/navigation";
 import {
   CircleHelp,
+  Home,
   LayoutDashboard,
-  FileText,
-  Settings,
 } from "lucide-react";
 
 import { cn } from "~/lib/utils";
 
 const navItems = [
-  { label: "Dashboard", icon: LayoutDashboard },
-  { label: "Reports", icon: FileText },
-  { label: "Settings", icon: Settings },
+  { label: "Home", href: "/", icon: Home },
+  { label: "Scenarios", href: "/admin/scenarios", icon: LayoutDashboard },
 ] as const;
 
 type AppHeaderProps = {
@@ -19,10 +21,12 @@ type AppHeaderProps = {
 };
 
 export function AppHeader({ onHelpClick }: AppHeaderProps) {
+  const pathname = usePathname();
+
   return (
     <header className="border-b border-slate-200 bg-white">
       <div className="mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-4 px-4 py-3">
-        <div className="flex min-w-0 items-center gap-3">
+        <Link href="/" className="flex min-w-0 items-center gap-3">
           <Image
             src="/images/safetalk-logo.png"
             alt="SafeTalk logo"
@@ -39,27 +43,41 @@ export function AppHeader({ onHelpClick }: AppHeaderProps) {
               Workplace Hazard Communication Assessment Tool
             </p>
           </div>
-        </div>
+        </Link>
 
         <nav
           className="hidden items-center gap-1 md:flex"
           aria-label="Main navigation"
         >
-          {navItems.map(({ label, icon: Icon }) => (
-            <button
-              key={label}
-              type="button"
-              className="inline-flex items-center gap-1.5 rounded-lg px-3 py-2 text-sm text-slate-600 transition-colors hover:bg-slate-100 hover:text-slate-900"
-              disabled
-              aria-disabled="true"
-            >
-              <Icon className="size-4" />
-              {label}
-            </button>
-          ))}
+          {navItems.map(({ label, href, icon: Icon }) => {
+            const isActive =
+              href === "/"
+                ? pathname === "/"
+                : pathname.startsWith(href);
+
+            return (
+              <Link
+                key={label}
+                href={href}
+                className={cn(
+                  "inline-flex items-center gap-1.5 rounded-lg px-3 py-2 text-sm transition-colors",
+                  isActive
+                    ? "bg-[#1e4a8c]/10 font-medium text-[#1e4a8c]"
+                    : "text-slate-600 hover:bg-slate-100 hover:text-slate-900",
+                )}
+                aria-current={isActive ? "page" : undefined}
+              >
+                <Icon className="size-4" />
+                {label}
+              </Link>
+            );
+          })}
           <button
             type="button"
-            className="inline-flex items-center gap-1.5 rounded-lg px-3 py-2 text-sm text-slate-600 transition-colors hover:bg-slate-100 hover:text-slate-900 disabled:cursor-not-allowed disabled:opacity-50"
+            className={cn(
+              "inline-flex items-center gap-1.5 rounded-lg px-3 py-2 text-sm text-slate-600 transition-colors hover:bg-slate-100 hover:text-slate-900",
+              !onHelpClick && "cursor-not-allowed opacity-50",
+            )}
             disabled={!onHelpClick}
             aria-disabled={!onHelpClick}
             aria-label="Open help tutorial"

@@ -1,3 +1,5 @@
+import type { HazardLabel } from "~/lib/demo-data";
+
 export type AssessmentPersona = {
   id: string;
   name: string;
@@ -13,4 +15,5 @@ export type AssessmentScenario = {
   imageSrc: string;
   imageAlt: string;
   personas: AssessmentPersona[];
+  hazardLabels?: HazardLabel[];
 };

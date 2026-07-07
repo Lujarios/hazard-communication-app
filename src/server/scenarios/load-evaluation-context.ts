@@ -2,8 +2,6 @@ import "server-only";
 
 import { eq } from "drizzle-orm";
 
-import { getScenarioAnswerKey } from "~/lib/scenario-answer-keys";
-import { workerPersonas } from "~/lib/demo-data";
 import type { ScenarioAnswerKey } from "~/lib/scenario-answer-keys";
 import type { db } from "~/server/db";
 import { scenarios } from "~/server/db/schema";
@@ -33,19 +31,6 @@ export async function loadScenarioEvaluationContext(
   database: typeof db,
   scenarioId: string,
 ): Promise<ScenarioEvaluationContext | null> {
-  const staticAnswerKey = getScenarioAnswerKey(scenarioId);
-  if (staticAnswerKey) {
-    return {
-      answerKey: staticAnswerKey,
-      personas: workerPersonas.map((persona) => ({
-        id: persona.id,
-        name: persona.name,
-        description: persona.description,
-        evaluationInstructions: `Respond as ${persona.name} (${persona.description}).`,
-      })),
-    };
-  }
-
   if (!isDatabaseScenarioId(scenarioId)) {
     return null;
   }

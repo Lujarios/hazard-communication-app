@@ -32,6 +32,7 @@ export const scenarios = createTable(
     description: d.text().notNull(),
     imageFileName: d.varchar({ length: 256 }).notNull(),
     status: d.varchar({ length: 16 }).notNull().default("draft"),
+    modelSummary: d.text(),
     createdAt: d
       .timestamp({ withTimezone: true })
       .$defaultFn(() => /* @__PURE__ */ new Date())
@@ -53,6 +54,10 @@ export const scenarioHazards = createTable(
     hazardDescription: d.text().notNull(),
     controlDescription: d.text().notNull(),
     locationNote: d.text(),
+    overlayTop: d.varchar({ length: 16 }),
+    overlayLeft: d.varchar({ length: 16 }),
+    severity: d.varchar({ length: 16 }).default("medium"),
+    isLifeThreatening: d.boolean().notNull().default(false),
     sortOrder: d.integer().notNull().default(0),
     createdAt: d
       .timestamp({ withTimezone: true })
