@@ -44,9 +44,8 @@ export function useFocusTrap(
       return;
     }
 
-    if (!previouslyFocusedRef.current) {
-      previouslyFocusedRef.current = document.activeElement as HTMLElement | null;
-    }
+    previouslyFocusedRef.current ??=
+      document.activeElement as HTMLElement | null;
 
     const container = containerRef.current;
     if (!container) return;

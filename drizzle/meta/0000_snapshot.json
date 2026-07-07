@@ -1,0 +1,398 @@
+{
+  "id": "3b3eb27e-a8d2-49e3-878b-fe3b9bf36a9c",
+  "prevId": "00000000-0000-0000-0000-000000000000",
+  "version": "7",
+  "dialect": "postgresql",
+  "tables": {
+    "public.hazard-communication-app_persona": {
+      "name": "hazard-communication-app_persona",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "varchar(64)",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "name": {
+          "name": "name",
+          "type": "varchar(256)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "roleDescription": {
+          "name": "roleDescription",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "evaluationInstructions": {
+          "name": "evaluationInstructions",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "initials": {
+          "name": "initials",
+          "type": "varchar(8)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "avatarColor": {
+          "name": "avatarColor",
+          "type": "varchar(64)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "imagePath": {
+          "name": "imagePath",
+          "type": "varchar(512)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "createdAt": {
+          "name": "createdAt",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "updatedAt": {
+          "name": "updatedAt",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.hazard-communication-app_post": {
+      "name": "hazard-communication-app_post",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "integer",
+          "primaryKey": true,
+          "notNull": true,
+          "identity": {
+            "type": "byDefault",
+            "name": "hazard-communication-app_post_id_seq",
+            "schema": "public",
+            "increment": "1",
+            "startWith": "1",
+            "minValue": "1",
+            "maxValue": "2147483647",
+            "cache": "1",
+            "cycle": false
+          }
+        },
+        "name": {
+          "name": "name",
+          "type": "varchar(256)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "createdAt": {
+          "name": "createdAt",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "updatedAt": {
+          "name": "updatedAt",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        }
+      },
+      "indexes": {
+        "name_idx": {
+          "name": "name_idx",
+          "columns": [
+            {
+              "expression": "name",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.hazard-communication-app_scenario_hazard": {
+      "name": "hazard-communication-app_scenario_hazard",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "scenarioId": {
+          "name": "scenarioId",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "hazardTitle": {
+          "name": "hazardTitle",
+          "type": "varchar(256)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "hazardDescription": {
+          "name": "hazardDescription",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "controlDescription": {
+          "name": "controlDescription",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "locationNote": {
+          "name": "locationNote",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "sortOrder": {
+          "name": "sortOrder",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 0
+        },
+        "createdAt": {
+          "name": "createdAt",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "updatedAt": {
+          "name": "updatedAt",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        }
+      },
+      "indexes": {
+        "scenario_hazard_scenario_idx": {
+          "name": "scenario_hazard_scenario_idx",
+          "columns": [
+            {
+              "expression": "scenarioId",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "hazard-communication-app_scenario_hazard_scenarioId_hazard-communication-app_scenario_id_fk": {
+          "name": "hazard-communication-app_scenario_hazard_scenarioId_hazard-communication-app_scenario_id_fk",
+          "tableFrom": "hazard-communication-app_scenario_hazard",
+          "tableTo": "hazard-communication-app_scenario",
+          "columnsFrom": [
+            "scenarioId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.hazard-communication-app_scenario_persona": {
+      "name": "hazard-communication-app_scenario_persona",
+      "schema": "",
+      "columns": {
+        "scenarioId": {
+          "name": "scenarioId",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "personaId": {
+          "name": "personaId",
+          "type": "varchar(64)",
+          "primaryKey": false,
+          "notNull": true
+        }
+      },
+      "indexes": {
+        "scenario_persona_scenario_idx": {
+          "name": "scenario_persona_scenario_idx",
+          "columns": [
+            {
+              "expression": "scenarioId",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "hazard-communication-app_scenario_persona_scenarioId_hazard-communication-app_scenario_id_fk": {
+          "name": "hazard-communication-app_scenario_persona_scenarioId_hazard-communication-app_scenario_id_fk",
+          "tableFrom": "hazard-communication-app_scenario_persona",
+          "tableTo": "hazard-communication-app_scenario",
+          "columnsFrom": [
+            "scenarioId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "hazard-communication-app_scenario_persona_personaId_hazard-communication-app_persona_id_fk": {
+          "name": "hazard-communication-app_scenario_persona_personaId_hazard-communication-app_persona_id_fk",
+          "tableFrom": "hazard-communication-app_scenario_persona",
+          "tableTo": "hazard-communication-app_persona",
+          "columnsFrom": [
+            "personaId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {
+        "hazard-communication-app_scenario_persona_scenarioId_personaId_pk": {
+          "name": "hazard-communication-app_scenario_persona_scenarioId_personaId_pk",
+          "columns": [
+            "scenarioId",
+            "personaId"
+          ]
+        }
+      },
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.hazard-communication-app_scenario": {
+      "name": "hazard-communication-app_scenario",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "title": {
+          "name": "title",
+          "type": "varchar(256)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "description": {
+          "name": "description",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "imageFileName": {
+          "name": "imageFileName",
+          "type": "varchar(256)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "status": {
+          "name": "status",
+          "type": "varchar(16)",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'draft'"
+        },
+        "createdAt": {
+          "name": "createdAt",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "updatedAt": {
+          "name": "updatedAt",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        }
+      },
+      "indexes": {
+        "scenario_status_idx": {
+          "name": "scenario_status_idx",
+          "columns": [
+            {
+              "expression": "status",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    }
+  },
+  "enums": {},
+  "schemas": {},
+  "sequences": {},
+  "roles": {},
+  "policies": {},
+  "views": {},
+  "_meta": {
+    "columns": {},
+    "schemas": {},
+    "tables": {}
+  }
+}
