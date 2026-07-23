@@ -18,9 +18,10 @@ const navItems = [
 
 type AppHeaderProps = {
   onHelpClick?: () => void;
+  highlightHelp?: boolean;
 };
 
-export function AppHeader({ onHelpClick }: AppHeaderProps) {
+export function AppHeader({ onHelpClick, highlightHelp = false }: AppHeaderProps) {
   const pathname = usePathname();
 
   return (
@@ -45,37 +46,44 @@ export function AppHeader({ onHelpClick }: AppHeaderProps) {
           </div>
         </Link>
 
-        <nav
-          className="hidden items-center gap-1 md:flex"
-          aria-label="Main navigation"
-        >
-          {navItems.map(({ label, href, icon: Icon }) => {
-            const isActive =
-              href === "/"
-                ? pathname === "/"
-                : pathname.startsWith(href);
+        <div className="flex items-center gap-1">
+          <nav
+            className="hidden items-center gap-1 md:flex"
+            aria-label="Main navigation"
+          >
+            {navItems.map(({ label, href, icon: Icon }) => {
+              const isActive =
+                href === "/"
+                  ? pathname === "/"
+                  : pathname.startsWith(href);
 
-            return (
-              <Link
-                key={label}
-                href={href}
-                className={cn(
-                  "inline-flex items-center gap-1.5 rounded-lg px-3 py-2 text-sm transition-colors",
-                  isActive
-                    ? "bg-[#1e4a8c]/10 font-medium text-[#1e4a8c]"
-                    : "text-slate-600 hover:bg-slate-100 hover:text-slate-900",
-                )}
-                aria-current={isActive ? "page" : undefined}
-              >
-                <Icon className="size-4" />
-                {label}
-              </Link>
-            );
-          })}
+              return (
+                <Link
+                  key={label}
+                  href={href}
+                  className={cn(
+                    "inline-flex items-center gap-1.5 rounded-lg px-3 py-2 text-sm transition-colors",
+                    isActive
+                      ? "bg-[#1e4a8c]/10 font-medium text-[#1e4a8c]"
+                      : "text-slate-600 hover:bg-slate-100 hover:text-slate-900",
+                  )}
+                  aria-current={isActive ? "page" : undefined}
+                >
+                  <Icon className="size-4" />
+                  {label}
+                </Link>
+              );
+            })}
+          </nav>
+
           <button
             type="button"
+            data-tour="help"
             className={cn(
-              "inline-flex items-center gap-1.5 rounded-lg px-3 py-2 text-sm text-slate-600 transition-colors hover:bg-slate-100 hover:text-slate-900",
+              "relative z-[60] inline-flex items-center gap-1.5 rounded-lg px-3 py-2 text-sm transition-colors",
+              highlightHelp
+                ? "bg-[#1e4a8c] font-semibold text-white shadow-lg shadow-blue-900/30 ring-4 ring-[#1e4a8c]/35 ring-offset-2 animate-pulse"
+                : "text-slate-600 hover:bg-slate-100 hover:text-slate-900",
               !onHelpClick && "cursor-not-allowed opacity-50",
             )}
             disabled={!onHelpClick}
@@ -86,16 +94,16 @@ export function AppHeader({ onHelpClick }: AppHeaderProps) {
             <CircleHelp className="size-4" />
             Help
           </button>
-        </nav>
 
-        <div
-          className={cn(
-            "flex size-9 shrink-0 items-center justify-center rounded-full",
-            "bg-[#1e4a8c] text-sm font-semibold text-white",
-          )}
-          aria-hidden
-        >
-          PM
+          <div
+            className={cn(
+              "ml-1 flex size-9 shrink-0 items-center justify-center rounded-full",
+              "bg-[#1e4a8c] text-sm font-semibold text-white",
+            )}
+            aria-hidden
+          >
+            PM
+          </div>
         </div>
       </div>
     </header>

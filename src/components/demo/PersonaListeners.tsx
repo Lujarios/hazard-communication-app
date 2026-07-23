@@ -130,7 +130,7 @@ export function PersonaListeners({
   return (
     <Card
       data-tour="personas"
-      className={cn("flex h-full w-full flex-col gap-0 py-0 ring-1 ring-slate-200", className)}
+      className={cn("flex w-full flex-col gap-0 py-0 ring-1 ring-slate-200", className)}
     >
       <CardHeader className="flex justify-center border-b border-slate-100 py-3 pb-3">
         <CardTitle className="flex items-center justify-center gap-2 text-base font-semibold text-slate-800">
@@ -139,16 +139,16 @@ export function PersonaListeners({
         </CardTitle>
       </CardHeader>
 
-      <CardContent className="flex min-h-0 flex-1 flex-col p-2">
-        <ul className="m-0 flex flex-1 flex-col gap-1.5 p-0">
+      <CardContent className="p-2">
+        <ul className="m-0 flex flex-col gap-1.5 p-0">
           {personas.map((persona) => {
             const feedback = getPersonaFeedback(persona.id, personaFeedback);
 
             return (
-              <li key={persona.id} className="flex min-h-0 flex-1">
+              <li key={persona.id}>
                 <div
                   className={cn(
-                    "flex h-full w-full gap-3 rounded-lg border border-slate-100/80 bg-slate-50/60 px-3 py-3 ring-1 ring-slate-100/50",
+                    "flex w-full max-h-48 gap-3 overflow-y-auto rounded-lg border border-slate-100/80 bg-slate-50/60 px-3 py-3 ring-1 ring-slate-100/50",
                     feedback ? "items-start" : "items-center",
                   )}
                 >
