@@ -1,8 +1,10 @@
 "use client";
 
 import Image from "next/image";
-import { useState } from "react";
+import { Loader2, Upload } from "lucide-react";
+import { useRef, useState } from "react";
 
+import { Button } from "~/components/ui/button";
 import { Input } from "~/components/ui/input";
 import { Label } from "~/components/ui/label";
 import {
@@ -22,22 +24,88 @@ export function ImageFilenameField({
   onChange,
   error,
 }: ImageFilenameFieldProps) {
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const [previewError, setPreviewError] = useState(false);
+  const [uploadError, setUploadError] = useState<string | null>(null);
+  const [isUploading, setIsUploading] = useState(false);
   const trimmedValue = value.trim();
   const previewSrc = trimmedValue ? getScenarioImagePath(trimmedValue) : null;
+
+  async function handleFileSelect(event: React.ChangeEvent<HTMLInputElement>) {
+    const selectedFile = event.target.files?.[0];
+    if (!selectedFile) return;
+
+    setUploadError(null);
+    setPreviewError(false);
+    setIsUploading(true);
+
+    try {
+      const formData = new FormData();
+      formData.append("file", selectedFile);
+
+      const response = await fetch("/api/admin/scenario-image", {
+        method: "POST",
+        body: formData,
+      });
+
+      if (!response.ok) {
+        const payload = (await response.json().catch(() => null)) as
+          | { error?: string }
+          | null;
+        throw new Error(payload?.error ?? "Upload failed.");
+      }
+
+      const payload = (await response.json()) as { fileName: string };
+      onChange(payload.fileName);
+    } catch (uploadFailure) {
+      setUploadError(
+        uploadFailure instanceof Error
+          ? uploadFailure.message
+          : "Failed to upload image.",
+      );
+    } finally {
+      setIsUploading(false);
+      if (fileInputRef.current) {
+        fileInputRef.current.value = "";
+      }
+    }
+  }
 
   return (
     <div className="space-y-3">
       <div className="space-y-2">
         <Label htmlFor="imageFileName">Reference photo filename</Label>
+        <div className="flex flex-wrap items-center gap-2">
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="image/*"
+            className="hidden"
+            onChange={handleFileSelect}
+          />
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => fileInputRef.current?.click()}
+            disabled={isUploading}
+          >
+            {isUploading ? (
+              <Loader2 className="size-4 animate-spin" aria-hidden />
+            ) : (
+              <Upload className="size-4" aria-hidden />
+            )}
+            {isUploading ? "Uploading..." : "Upload image"}
+          </Button>
+        </div>
         <Input
           id="imageFileName"
           list="scenario-image-options"
-          placeholder="e.g. construction-site-demo.png"
+          placeholder="Upload an image or enter filename manually"
           value={value}
           aria-invalid={Boolean(error)}
           onChange={(event) => {
             setPreviewError(false);
+            setUploadError(null);
             onChange(event.target.value);
           }}
         />
@@ -51,8 +119,11 @@ export function ImageFilenameField({
           <code className="rounded bg-slate-100 px-1 py-0.5 text-[11px]">
             /public/scenarios/
           </code>
-          . Only the filename is stored in the database.
+          . Upload stores the file locally and saves only its filename.
         </p>
+        {uploadError ? (
+          <p className="text-xs text-destructive">{uploadError}</p>
+        ) : null}
         {error ? (
           <p className="text-xs text-destructive">{error}</p>
         ) : null}
