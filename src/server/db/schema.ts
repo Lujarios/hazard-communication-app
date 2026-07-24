@@ -1,5 +1,6 @@
 import { relations } from "drizzle-orm";
 import { index, pgTableCreator, primaryKey } from "drizzle-orm/pg-core";
+import { type AdapterAccount } from "next-auth/adapters";
 
 /**
  * Multi-project schema prefix for Drizzle ORM.
@@ -24,10 +25,103 @@ export const posts = createTable(
   (t) => [index("name_idx").on(t.name)],
 );
 
+/**
+ * Companies / tenants. Managers in an org can manage that org's scenarios.
+ */
+export const organizations = createTable(
+  "organization",
+  (d) => ({
+    id: d
+      .varchar({ length: 255 })
+      .notNull()
+      .primaryKey()
+      .$defaultFn(() => crypto.randomUUID()),
+    name: d.varchar({ length: 256 }).notNull(),
+    createdAt: d
+      .timestamp({ withTimezone: true })
+      .$defaultFn(() => /* @__PURE__ */ new Date())
+      .notNull(),
+    updatedAt: d.timestamp({ withTimezone: true }).$onUpdate(() => new Date()),
+  }),
+  (t) => [index("organization_name_idx").on(t.name)],
+);
+
+/**
+ * Auth.js user + SafeTalk manager fields.
+ * Assessment takers do not need accounts — only managers/admins who build scenarios.
+ */
+export const users = createTable("user", (d) => ({
+  id: d
+    .varchar({ length: 255 })
+    .notNull()
+    .primaryKey()
+    .$defaultFn(() => crypto.randomUUID()),
+  name: d.varchar({ length: 255 }),
+  email: d.varchar({ length: 255 }).notNull(),
+  emailVerified: d.timestamp({
+    mode: "date",
+    withTimezone: true,
+  }),
+  image: d.varchar({ length: 255 }),
+  organizationId: d.varchar({ length: 255 }).references(() => organizations.id),
+  /** manager = create/edit scenarios; admin = same for MVP (roles reserved for later) */
+  role: d.varchar({ length: 32 }).notNull().default("manager"),
+  /** Only used by local/dev Credentials login — not used for Cognito. */
+  passwordHash: d.text(),
+}));
+
+export const accounts = createTable(
+  "account",
+  (d) => ({
+    userId: d
+      .varchar({ length: 255 })
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    type: d.varchar({ length: 255 }).$type<AdapterAccount["type"]>().notNull(),
+    provider: d.varchar({ length: 255 }).notNull(),
+    providerAccountId: d.varchar({ length: 255 }).notNull(),
+    refresh_token: d.text(),
+    access_token: d.text(),
+    expires_at: d.integer(),
+    token_type: d.varchar({ length: 255 }),
+    scope: d.varchar({ length: 255 }),
+    id_token: d.text(),
+    session_state: d.varchar({ length: 255 }),
+  }),
+  (t) => [
+    primaryKey({ columns: [t.provider, t.providerAccountId] }),
+    index("account_user_id_idx").on(t.userId),
+  ],
+);
+
+export const sessions = createTable(
+  "session",
+  (d) => ({
+    sessionToken: d.varchar({ length: 255 }).notNull().primaryKey(),
+    userId: d
+      .varchar({ length: 255 })
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    expires: d.timestamp({ mode: "date", withTimezone: true }).notNull(),
+  }),
+  (t) => [index("session_user_id_idx").on(t.userId)],
+);
+
+export const verificationTokens = createTable(
+  "verification_token",
+  (d) => ({
+    identifier: d.varchar({ length: 255 }).notNull(),
+    token: d.varchar({ length: 255 }).notNull(),
+    expires: d.timestamp({ mode: "date", withTimezone: true }).notNull(),
+  }),
+  (t) => [primaryKey({ columns: [t.identifier, t.token] })],
+);
+
 export const scenarios = createTable(
   "scenario",
   (d) => ({
     id: d.uuid().primaryKey().defaultRandom(),
+    organizationId: d.varchar({ length: 255 }).references(() => organizations.id),
     title: d.varchar({ length: 256 }).notNull(),
     description: d.text().notNull(),
     imageFileName: d.varchar({ length: 256 }).notNull(),
@@ -39,7 +133,10 @@ export const scenarios = createTable(
       .notNull(),
     updatedAt: d.timestamp({ withTimezone: true }).$onUpdate(() => new Date()),
   }),
-  (t) => [index("scenario_status_idx").on(t.status)],
+  (t) => [
+    index("scenario_status_idx").on(t.status),
+    index("scenario_organization_idx").on(t.organizationId),
+  ],
 );
 
 export const scenarioHazards = createTable(
@@ -101,7 +198,33 @@ export const scenarioPersonas = createTable(
   ],
 );
 
-export const scenariosRelations = relations(scenarios, ({ many }) => ({
+export const organizationsRelations = relations(organizations, ({ many }) => ({
+  users: many(users),
+  scenarios: many(scenarios),
+}));
+
+export const usersRelations = relations(users, ({ one, many }) => ({
+  organization: one(organizations, {
+    fields: [users.organizationId],
+    references: [organizations.id],
+  }),
+  accounts: many(accounts),
+  sessions: many(sessions),
+}));
+
+export const accountsRelations = relations(accounts, ({ one }) => ({
+  user: one(users, { fields: [accounts.userId], references: [users.id] }),
+}));
+
+export const sessionsRelations = relations(sessions, ({ one }) => ({
+  user: one(users, { fields: [sessions.userId], references: [users.id] }),
+}));
+
+export const scenariosRelations = relations(scenarios, ({ one, many }) => ({
+  organization: one(organizations, {
+    fields: [scenarios.organizationId],
+    references: [organizations.id],
+  }),
   hazards: many(scenarioHazards),
   scenarioPersonas: many(scenarioPersonas),
 }));

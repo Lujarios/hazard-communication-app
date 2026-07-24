@@ -3,10 +3,11 @@ import "~/styles/globals.css";
 import { type Metadata } from "next";
 import { Geist, Inter } from "next/font/google";
 
+import { AuthSessionProvider } from "~/components/auth/AuthSessionProvider";
 import { TRPCReactProvider } from "~/trpc/react";
 import { cn } from "~/lib/utils";
 
-const inter = Inter({subsets:['latin'],variable:'--font-sans'});
+const inter = Inter({ subsets: ["latin"], variable: "--font-sans" });
 
 export const metadata: Metadata = {
   title: "SafeTalk — Hazard Communication Assessment",
@@ -26,7 +27,9 @@ export default function RootLayout({
   return (
     <html lang="en" className={cn(geist.variable, "font-sans", inter.variable)}>
       <body>
-        <TRPCReactProvider>{children}</TRPCReactProvider>
+        <AuthSessionProvider>
+          <TRPCReactProvider>{children}</TRPCReactProvider>
+        </AuthSessionProvider>
       </body>
     </html>
   );

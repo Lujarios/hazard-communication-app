@@ -3,6 +3,8 @@ import path from "node:path";
 
 import { NextResponse } from "next/server";
 
+import { auth } from "~/server/auth";
+
 const SCENARIO_DIR = path.join(process.cwd(), "public", "scenarios");
 const ALLOWED_EXTENSIONS = new Set([
   ".jpg",
@@ -23,6 +25,11 @@ function sanitizeBaseName(fileName: string): string {
 }
 
 export async function POST(request: Request) {
+  const session = await auth();
+  if (!session?.user) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
   const formData = await request.formData();
   const uploaded = formData.get("file");
 

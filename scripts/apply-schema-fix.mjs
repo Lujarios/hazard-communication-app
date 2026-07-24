@@ -1,6 +1,8 @@
 /**
- * Applies drizzle/0001_new_ares.sql when `db:migrate` cannot run because
+ * Applies additive schema fixes when `db:migrate` cannot run because
  * tables were created earlier via `db:push`.
+ *
+ * Includes auth/org columns introduced for Cognito manager login.
  */
 import postgres from "postgres";
 
@@ -19,6 +21,8 @@ const statements = [
   `ALTER TABLE "hazard-communication-app_scenario_hazard" ADD COLUMN IF NOT EXISTS "severity" varchar(16) DEFAULT 'medium'`,
   `ALTER TABLE "hazard-communication-app_scenario_hazard" ADD COLUMN IF NOT EXISTS "isLifeThreatening" boolean DEFAULT false NOT NULL`,
   `ALTER TABLE "hazard-communication-app_scenario" ADD COLUMN IF NOT EXISTS "modelSummary" text`,
+  `ALTER TABLE "hazard-communication-app_scenario" ADD COLUMN IF NOT EXISTS "organizationId" varchar(255)`,
+  `CREATE INDEX IF NOT EXISTS "scenario_organization_idx" ON "hazard-communication-app_scenario" ("organizationId")`,
 ];
 
 try {

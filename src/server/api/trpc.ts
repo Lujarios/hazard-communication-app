@@ -6,10 +6,11 @@
  * TL;DR - This is where all the tRPC server stuff is created and plugged in. The pieces you will
  * need to use are documented accordingly near the end.
  */
-import { initTRPC } from "@trpc/server";
+import { initTRPC, TRPCError } from "@trpc/server";
 import superjson from "superjson";
 import { ZodError } from "zod";
 
+import { auth } from "~/server/auth";
 import { db } from "~/server/db";
 
 /**
@@ -25,8 +26,11 @@ import { db } from "~/server/db";
  * @see https://trpc.io/docs/server/context
  */
 export const createTRPCContext = async (opts: { headers: Headers }) => {
+  const session = await auth();
+
   return {
     db,
+    session,
     ...opts,
   };
 };
@@ -35,7 +39,7 @@ export const createTRPCContext = async (opts: { headers: Headers }) => {
  * 2. INITIALIZATION
  *
  * This is where the tRPC API is initialized, connecting the context and transformer. We also parse
- * ZodErrors so that you get typesafety on the frontend if your procedure fails due to validation
+ * ZodErrors so that you get typesafety on the frontend if the procedure fails due to validation
  * errors on the backend.
  */
 const t = initTRPC.context<typeof createTRPCContext>().create({
@@ -62,7 +66,7 @@ export const createCallerFactory = t.createCallerFactory;
 /**
  * 3. ROUTER & PROCEDURE (THE IMPORTANT BIT)
  *
- * These are the pieces you use to build your tRPC API. You should import these a lot in the
+ * These are the pieces you use to build new routers and sub-routers in your
  * "/src/server/api/routers" directory.
  */
 
@@ -104,3 +108,21 @@ const timingMiddleware = t.middleware(async ({ next, path }) => {
  * are logged in.
  */
 export const publicProcedure = t.procedure.use(timingMiddleware);
+
+/**
+ * Protected (authenticated) procedure — managers/admins only.
+ * Assessment takers do not need accounts; keep assessment routes on publicProcedure.
+ */
+export const protectedProcedure = t.procedure
+  .use(timingMiddleware)
+  .use(({ ctx, next }) => {
+    if (!ctx.session?.user) {
+      throw new TRPCError({ code: "UNAUTHORIZED" });
+    }
+
+    return next({
+      ctx: {
+        session: { ...ctx.session, user: ctx.session.user },
+      },
+    });
+  });

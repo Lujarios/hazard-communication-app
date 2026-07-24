@@ -1,8 +1,12 @@
 import { TRPCError } from "@trpc/server";
-import { desc, eq } from "drizzle-orm";
+import { and, desc, eq } from "drizzle-orm";
 import { z } from "zod";
 
-import { createTRPCRouter, publicProcedure } from "~/server/api/trpc";
+import {
+  createTRPCRouter,
+  protectedProcedure,
+  publicProcedure,
+} from "~/server/api/trpc";
 import type { createTRPCContext } from "~/server/api/trpc";
 import {
   scenarioHazards,
@@ -40,6 +44,22 @@ const scenarioInputSchema = z.object({
 const updateScenarioInputSchema = scenarioInputSchema.extend({
   id: z.string().uuid(),
 });
+
+function requireOrganizationId(organizationId: string | null | undefined) {
+  if (!organizationId) {
+    throw new TRPCError({
+      code: "FORBIDDEN",
+      message:
+        "Your account is not assigned to an organization. Ask an admin to link your user before managing scenarios.",
+    });
+  }
+
+  return organizationId;
+}
+
+function isAdminRole(role: string | undefined) {
+  return role === "admin";
+}
 
 async function validatePersonaIds(
   ctx: ScenarioRouterContext,
@@ -97,10 +117,22 @@ async function saveScenarioRelations(
 }
 
 export const scenarioRouter = createTRPCRouter({
-  list: publicProcedure.query(async ({ ctx }) => {
+  /**
+   * Managers see scenarios for their organization.
+   * Admins see all scenarios (including any not yet assigned to an org).
+   */
+  list: protectedProcedure.query(async ({ ctx }) => {
     await ensureAppSeeded();
 
+    const admin = isAdminRole(ctx.session.user.role);
+    if (!admin) {
+      requireOrganizationId(ctx.session.user.organizationId);
+    }
+
     return ctx.db.query.scenarios.findMany({
+      where: admin
+        ? undefined
+        : eq(scenarios.organizationId, ctx.session.user.organizationId!),
       orderBy: [desc(scenarios.updatedAt), desc(scenarios.createdAt)],
       with: {
         hazards: {
@@ -113,7 +145,7 @@ export const scenarioRouter = createTRPCRouter({
     });
   }),
 
-  listPersonas: publicProcedure.query(async ({ ctx }) => {
+  listPersonas: protectedProcedure.query(async ({ ctx }) => {
     await ensurePersonasSeeded();
 
     return ctx.db.query.personas.findMany({
@@ -121,13 +153,15 @@ export const scenarioRouter = createTRPCRouter({
     });
   }),
 
+  /** Public: assessment takers open scenarios by share link without login. */
   getById: publicProcedure
     .input(z.object({ id: z.string().uuid() }))
     .query(async ({ ctx, input }) => {
       await ensureAppSeeded();
 
       const scenario = await ctx.db.query.scenarios.findFirst({
-        where: (scenarioTable, { eq }) => eq(scenarioTable.id, input.id),
+        where: (scenarioTable, { eq: equals }) =>
+          equals(scenarioTable.id, input.id),
         with: {
           hazards: {
             orderBy: (hazardTable, { asc }) => [asc(hazardTable.sortOrder)],
@@ -150,14 +184,18 @@ export const scenarioRouter = createTRPCRouter({
       return scenario;
     }),
 
-  create: publicProcedure
+  create: protectedProcedure
     .input(scenarioInputSchema)
     .mutation(async ({ ctx, input }) => {
+      const organizationId = requireOrganizationId(
+        ctx.session.user.organizationId,
+      );
       await validatePersonaIds(ctx, input.personaIds);
 
       const [createdScenario] = await ctx.db
         .insert(scenarios)
         .values({
+          organizationId,
           title: input.title,
           description: input.description,
           imageFileName: input.imageFileName,
@@ -177,12 +215,22 @@ export const scenarioRouter = createTRPCRouter({
       return createdScenario;
     }),
 
-  update: publicProcedure
+  update: protectedProcedure
     .input(updateScenarioInputSchema)
     .mutation(async ({ ctx, input }) => {
+      const admin = isAdminRole(ctx.session.user.role);
+      const organizationId = admin
+        ? ctx.session.user.organizationId
+        : requireOrganizationId(ctx.session.user.organizationId);
+
       const existingScenario = await ctx.db.query.scenarios.findFirst({
-        where: eq(scenarios.id, input.id),
-        columns: { id: true },
+        where: admin
+          ? eq(scenarios.id, input.id)
+          : and(
+              eq(scenarios.id, input.id),
+              eq(scenarios.organizationId, organizationId!),
+            ),
+        columns: { id: true, organizationId: true },
       });
 
       if (!existingScenario) {
@@ -201,6 +249,12 @@ export const scenarioRouter = createTRPCRouter({
           description: input.description,
           imageFileName: input.imageFileName,
           status: input.status,
+          // Claim orphaned (pre-auth) scenarios onto the admin's org when edited.
+          ...(admin &&
+          !existingScenario.organizationId &&
+          organizationId
+            ? { organizationId }
+            : {}),
         })
         .where(eq(scenarios.id, input.id))
         .returning();

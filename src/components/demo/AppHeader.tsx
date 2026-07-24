@@ -9,6 +9,7 @@ import {
   LayoutDashboard,
 } from "lucide-react";
 
+import { HeaderAuthMenu } from "~/components/auth/HeaderAuthMenu";
 import { cn } from "~/lib/utils";
 
 const navItems = [
@@ -95,15 +96,7 @@ export function AppHeader({ onHelpClick, highlightHelp = false }: AppHeaderProps
             Help
           </button>
 
-          <div
-            className={cn(
-              "ml-1 flex size-9 shrink-0 items-center justify-center rounded-full",
-              "bg-[#1e4a8c] text-sm font-semibold text-white",
-            )}
-            aria-hidden
-          >
-            PM
-          </div>
+          <HeaderAuthMenu />
         </div>
       </div>
     </header>

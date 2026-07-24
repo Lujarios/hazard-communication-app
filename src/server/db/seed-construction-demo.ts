@@ -1,5 +1,6 @@
-import { eq } from "drizzle-orm";
+import { eq, isNull } from "drizzle-orm";
 
+import { SEED_ORG_ACME_ID } from "~/lib/auth-constants";
 import { hazardLabels } from "~/lib/demo-data";
 import { CONSTRUCTION_SITE_DEMO_SCENARIO_ID } from "~/lib/scenario-constants";
 import { constructionSiteDemoAnswerKey } from "~/lib/scenario-answer-keys";
@@ -11,6 +12,7 @@ import {
   scenarios,
 } from "~/server/db/schema";
 
+import { ensureAuthSeeded } from "./seed-auth";
 import { ensurePersonasSeeded } from "./seed-personas";
 
 const DEMO_IMAGE_FILE = "construction-site-demo.png";
@@ -20,19 +22,27 @@ const overlayByHazardName = new Map(
 );
 
 export async function ensureConstructionSiteDemoSeeded(): Promise<string> {
+  await ensureAuthSeeded();
   await ensurePersonasSeeded();
 
   const existing = await db.query.scenarios.findFirst({
     where: eq(scenarios.id, CONSTRUCTION_SITE_DEMO_SCENARIO_ID),
-    columns: { id: true },
+    columns: { id: true, organizationId: true },
   });
 
   if (existing) {
+    if (!existing.organizationId) {
+      await db
+        .update(scenarios)
+        .set({ organizationId: SEED_ORG_ACME_ID })
+        .where(eq(scenarios.id, CONSTRUCTION_SITE_DEMO_SCENARIO_ID));
+    }
     return existing.id;
   }
 
   await db.insert(scenarios).values({
     id: CONSTRUCTION_SITE_DEMO_SCENARIO_ID,
+    organizationId: SEED_ORG_ACME_ID,
     title: "Scenario: Commercial Building Construction",
     description:
       "Review the construction site image. Identify visible hazards, explain why each is dangerous, and describe the controls workers should follow before work continues.",
@@ -70,6 +80,18 @@ export async function ensureConstructionSiteDemoSeeded(): Promise<string> {
   return CONSTRUCTION_SITE_DEMO_SCENARIO_ID;
 }
 
+/**
+ * Attach pre-auth scenarios (organizationId null) to the default Acme org
+ * so managers in that org see them again after org scoping was added.
+ */
+async function backfillOrphanedScenarios(): Promise<void> {
+  await db
+    .update(scenarios)
+    .set({ organizationId: SEED_ORG_ACME_ID })
+    .where(isNull(scenarios.organizationId));
+}
+
 export async function ensureAppSeeded(): Promise<void> {
   await ensureConstructionSiteDemoSeeded();
+  await backfillOrphanedScenarios();
 }

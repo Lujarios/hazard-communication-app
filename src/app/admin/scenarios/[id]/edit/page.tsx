@@ -4,19 +4,32 @@ import { notFound } from "next/navigation";
 import { ScenarioBuilderForm } from "~/components/admin/ScenarioBuilderForm";
 import { AppHeader } from "~/components/demo/AppHeader";
 import { toScenarioFormValues } from "~/types/scenario";
+import { auth } from "~/server/auth";
 import { api } from "~/trpc/server";
 
 type EditScenarioPageProps = {
   params: Promise<{ id: string }>;
 };
 
-export default async function EditScenarioPage({ params }: EditScenarioPageProps) {
+export default async function EditScenarioPage({
+  params,
+}: EditScenarioPageProps) {
   const { id } = await params;
+  const session = await auth();
 
   let scenario;
   try {
     scenario = await api.scenario.getById({ id });
   } catch {
+    notFound();
+  }
+
+  const isAdmin = session?.user.role === "admin";
+  const sameOrg =
+    Boolean(session?.user.organizationId) &&
+    scenario.organizationId === session?.user.organizationId;
+
+  if (!session?.user || (!isAdmin && !sameOrg)) {
     notFound();
   }
 
@@ -34,7 +47,10 @@ export default async function EditScenarioPage({ params }: EditScenarioPageProps
           </h1>
           <p className="text-sm text-slate-600">
             Update scenario details, hazards, and personas.{" "}
-            <Link href="/admin/scenarios" className="text-[#1e4a8c] hover:underline">
+            <Link
+              href="/admin/scenarios"
+              className="text-[#1e4a8c] hover:underline"
+            >
               Back to scenarios
             </Link>
           </p>

@@ -29,11 +29,14 @@ Build a local MVP prototype of the hazard communication assessment flow.
 - Seed one scenario and personas.
 - Save attempt data.
 
-## Phase 3: AWS Auth — Not started
+## Phase 3: AWS Auth — In progress (managers only)
 
-- Add Cognito authentication.
-- Protect assessment page.
-- Associate attempts with authenticated users.
+- [x] Auth.js (NextAuth v5) + Cognito provider + Drizzle adapter.
+- [x] Organizations + users; scenarios scoped to organizations.
+- [x] Protect `/admin/**` and scenario create/update (assessment stays public).
+- [x] Local/dev Credentials login with seeded manager users.
+- [ ] Associate assessment attempts with authenticated users (not needed for public assessments).
+- [ ] Production Cognito User Pool hardening (no Credentials provider).
 
 ## Phase 4: Audio Upload — Not started
 

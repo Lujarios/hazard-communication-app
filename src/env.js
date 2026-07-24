@@ -12,6 +12,24 @@ export const env = createEnv({
     NODE_ENV: z
       .enum(["development", "test", "production"])
       .default("development"),
+    /**
+     * Auth.js secret. Generate with: `openssl rand -base64 32`
+     * @see https://authjs.dev/getting-started/deployment#auth_secret
+     */
+    AUTH_SECRET: z.string().min(1),
+    /** Optional Cognito app client — leave unset for local Credentials-only login. */
+    AUTH_COGNITO_ID: z.string().min(1).optional(),
+    AUTH_COGNITO_SECRET: z.string().min(1).optional(),
+    /**
+     * Cognito issuer, e.g.
+     * https://cognito-idp.us-east-1.amazonaws.com/us-east-1_XXXXXXXXX
+     */
+    AUTH_COGNITO_ISSUER: z.string().url().optional(),
+    /**
+     * Enable email/password Credentials login against seeded users.
+     * Defaults on in development unless set to "false". Set "true" to force on.
+     */
+    AUTH_DEV_LOGIN: z.enum(["true", "false"]).optional(),
   },
 
   /**
@@ -31,7 +49,11 @@ export const env = createEnv({
     DATABASE_URL: process.env.DATABASE_URL,
     OPENAI_API_KEY: process.env.OPENAI_API_KEY,
     NODE_ENV: process.env.NODE_ENV,
-    // NEXT_PUBLIC_CLIENTVAR: process.env.NEXT_PUBLIC_CLIENTVAR,
+    AUTH_SECRET: process.env.AUTH_SECRET,
+    AUTH_COGNITO_ID: process.env.AUTH_COGNITO_ID,
+    AUTH_COGNITO_SECRET: process.env.AUTH_COGNITO_SECRET,
+    AUTH_COGNITO_ISSUER: process.env.AUTH_COGNITO_ISSUER,
+    AUTH_DEV_LOGIN: process.env.AUTH_DEV_LOGIN,
   },
   /**
    * Run `build` or `dev` with `SKIP_ENV_VALIDATION` to skip env validation. This is especially
