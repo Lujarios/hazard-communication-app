@@ -1,3 +1,4 @@
+import { analyticsRouter } from "~/server/api/routers/analytics";
 import { assessmentSessionRouter } from "~/server/api/routers/assessment-session";
 import { feedbackRouter } from "~/server/api/routers/feedback";
 import { postRouter } from "~/server/api/routers/post";
@@ -14,6 +15,7 @@ export const appRouter = createTRPCRouter({
   feedback: feedbackRouter,
   scenario: scenarioRouter,
   assessmentSession: assessmentSessionRouter,
+  analytics: analyticsRouter,
 });
 
 // export type definition of API

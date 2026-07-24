@@ -7,6 +7,7 @@ import {
   CircleHelp,
   Home,
   LayoutDashboard,
+  ChartColumn,
 } from "lucide-react";
 
 import { HeaderAuthMenu } from "~/components/auth/HeaderAuthMenu";
@@ -15,6 +16,7 @@ import { cn } from "~/lib/utils";
 const navItems = [
   { label: "Home", href: "/", icon: Home },
   { label: "Scenarios", href: "/admin/scenarios", icon: LayoutDashboard },
+  { label: "Analytics", href: "/admin/analytics", icon: ChartColumn },
 ] as const;
 
 type AppHeaderProps = {
