@@ -19,9 +19,14 @@ import { cn } from "~/lib/utils";
 
 type AssessmentExperienceProps = {
   scenario: AssessmentScenario;
+  /** Present when the trainee joined via a share code. */
+  assessmentSessionId?: string;
 };
 
-function AssessmentExperienceContent({ scenario }: AssessmentExperienceProps) {
+function AssessmentExperienceContent({
+  scenario,
+  assessmentSessionId,
+}: AssessmentExperienceProps) {
   const { open } = useTutorial();
   const [isRecording, setIsRecording] = useState(false);
   const [feedbackState, setFeedbackState] = useState(initialFeedbackState);
@@ -133,6 +138,7 @@ function AssessmentExperienceContent({ scenario }: AssessmentExperienceProps) {
               <TranscriptionPanel
                 className="h-full min-h-[280px]"
                 scenarioId={scenario.id}
+                assessmentSessionId={assessmentSessionId}
                 onRecordingChange={setIsRecording}
                 onFeedbackStateChange={setFeedbackState}
               />
@@ -161,10 +167,16 @@ function AssessmentExperienceContent({ scenario }: AssessmentExperienceProps) {
   );
 }
 
-export function AssessmentExperience({ scenario }: AssessmentExperienceProps) {
+export function AssessmentExperience({
+  scenario,
+  assessmentSessionId,
+}: AssessmentExperienceProps) {
   return (
     <TutorialProvider>
-      <AssessmentExperienceContent scenario={scenario} />
+      <AssessmentExperienceContent
+        scenario={scenario}
+        assessmentSessionId={assessmentSessionId}
+      />
     </TutorialProvider>
   );
 }

@@ -251,6 +251,48 @@ export const assessmentSessions = createTable(
   ],
 );
 
+/**
+ * Anonymous trainee attempts after Get Feedback succeeds.
+ * Separate from scenario definition tables; no Cognito/user account required.
+ * Multiple rows per anonymousParticipantId enable improvement-over-time analytics.
+ */
+export const assessmentAttempts = createTable(
+  "assessment_attempt",
+  (d) => ({
+    id: d.uuid().primaryKey().defaultRandom(),
+    /** Client-generated UUID stored in localStorage — no name/role/PII. */
+    anonymousParticipantId: d.varchar({ length: 36 }).notNull(),
+    scenarioId: d
+      .uuid()
+      .notNull()
+      .references(() => scenarios.id, { onDelete: "cascade" }),
+    assessmentSessionId: d
+      .uuid()
+      .references(() => assessmentSessions.id, { onDelete: "set null" }),
+    /** Join code snapshot at attempt time (session may later close). */
+    joinCode: d.varchar({ length: 6 }),
+    transcript: d.text().notNull(),
+    overallStars: d.integer().notNull(),
+    overallSummary: d.text().notNull(),
+    criteriaRatings: d.jsonb().notNull(),
+    missedItems: d.jsonb().notNull(),
+    personaFeedback: d.jsonb(),
+    createdAt: d
+      .timestamp({ withTimezone: true })
+      .$defaultFn(() => /* @__PURE__ */ new Date())
+      .notNull(),
+  }),
+  (t) => [
+    index("assessment_attempt_participant_idx").on(t.anonymousParticipantId),
+    index("assessment_attempt_scenario_idx").on(t.scenarioId),
+    index("assessment_attempt_session_idx").on(t.assessmentSessionId),
+    index("assessment_attempt_participant_scenario_idx").on(
+      t.anonymousParticipantId,
+      t.scenarioId,
+    ),
+  ],
+);
+
 export const organizationsRelations = relations(organizations, ({ many }) => ({
   users: many(users),
   scenarios: many(scenarios),
@@ -282,6 +324,7 @@ export const scenariosRelations = relations(scenarios, ({ one, many }) => ({
   hazards: many(scenarioHazards),
   scenarioPersonas: many(scenarioPersonas),
   assessmentSessions: many(assessmentSessions),
+  assessmentAttempts: many(assessmentAttempts),
 }));
 
 export const scenarioHazardsRelations = relations(scenarioHazards, ({ one }) => ({
@@ -315,7 +358,7 @@ export const scenarioPersonasRelations = relations(
 
 export const assessmentSessionsRelations = relations(
   assessmentSessions,
-  ({ one }) => ({
+  ({ one, many }) => ({
     scenario: one(scenarios, {
       fields: [assessmentSessions.scenarioId],
       references: [scenarios.id],
@@ -323,6 +366,21 @@ export const assessmentSessionsRelations = relations(
     createdBy: one(users, {
       fields: [assessmentSessions.createdByUserId],
       references: [users.id],
+    }),
+    attempts: many(assessmentAttempts),
+  }),
+);
+
+export const assessmentAttemptsRelations = relations(
+  assessmentAttempts,
+  ({ one }) => ({
+    scenario: one(scenarios, {
+      fields: [assessmentAttempts.scenarioId],
+      references: [scenarios.id],
+    }),
+    assessmentSession: one(assessmentSessions, {
+      fields: [assessmentAttempts.assessmentSessionId],
+      references: [assessmentSessions.id],
     }),
   }),
 );

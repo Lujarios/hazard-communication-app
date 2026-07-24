@@ -34,7 +34,9 @@ export function JoinCodeForm({ initialCode = "" }: JoinCodeFormProps) {
       const resolved = await utils.assessmentSession.resolveByCode.fetch({
         code: normalized,
       });
-      router.push(`/assessment/${resolved.scenarioId}`);
+      router.push(
+        `/assessment/${resolved.scenarioId}?session=${resolved.sessionId}`,
+      );
     } catch (err) {
       const message =
         err instanceof Error ? err.message : "Invalid or expired join code";

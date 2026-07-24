@@ -23,16 +23,21 @@ export default async function JoinWithCodePage({
   const { code: rawCode } = await params;
   const code = normalizeJoinCode(rawCode);
 
-  let scenarioId: string | null = null;
+  let resolvedSession: { scenarioId: string; sessionId: string } | null = null;
   try {
     const resolved = await api.assessmentSession.resolveByCode({ code });
-    scenarioId = resolved.scenarioId;
+    resolvedSession = {
+      scenarioId: resolved.scenarioId,
+      sessionId: resolved.sessionId,
+    };
   } catch {
-    scenarioId = null;
+    resolvedSession = null;
   }
 
-  if (scenarioId) {
-    redirect(`/assessment/${scenarioId}`);
+  if (resolvedSession) {
+    redirect(
+      `/assessment/${resolvedSession.scenarioId}?session=${resolvedSession.sessionId}`,
+    );
   }
 
   return (

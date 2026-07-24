@@ -13,6 +13,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card";
 import { Separator } from "~/components/ui/separator";
 import { Textarea } from "~/components/ui/textarea";
 import { useSpeechRecognition } from "~/hooks/use-speech-recognition";
+import { getOrCreateAnonymousParticipantId } from "~/lib/anonymous-participant";
 // import { transcribeAudioViaAws } from "~/lib/transcription-placeholder";
 import { cn } from "~/lib/utils";
 import { api } from "~/trpc/react";
@@ -42,6 +43,7 @@ function SignalBars() {
 type TranscriptionPanelProps = {
   className?: string;
   scenarioId: string;
+  assessmentSessionId?: string;
   onRecordingChange?: (isRecording: boolean) => void;
   onFeedbackStateChange?: (state: FeedbackState) => void;
 };
@@ -49,6 +51,7 @@ type TranscriptionPanelProps = {
 export function TranscriptionPanel({
   className,
   scenarioId,
+  assessmentSessionId,
   onRecordingChange,
   onFeedbackStateChange,
 }: TranscriptionPanelProps) {
@@ -140,6 +143,10 @@ export function TranscriptionPanel({
     evaluateFeedback.mutate({
       scenarioId,
       transcript: transcript.trim(),
+      anonymousParticipantId: getOrCreateAnonymousParticipantId(),
+      ...(assessmentSessionId
+        ? { assessmentSessionId }
+        : {}),
     });
   };
 
