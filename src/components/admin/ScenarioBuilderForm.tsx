@@ -318,6 +318,9 @@ export function ScenarioBuilderForm({
             personas={personasQuery.data ?? []}
             selectedIds={formValues.personaIds}
             onChange={(personaIds) => updateForm({ personaIds })}
+            onPersonaCreated={() => {
+              void personasQuery.refetch();
+            }}
             error={errors.personaIds}
             isLoading={personasQuery.isLoading}
           />

@@ -2,7 +2,8 @@
  * Applies additive schema fixes when `db:migrate` cannot run because
  * tables were created earlier via `db:push`.
  *
- * Includes auth/org columns introduced for Cognito manager login.
+ * Includes auth/org columns introduced for Cognito manager login,
+ * plus org-scoped custom persona columns.
  */
 import postgres from "postgres";
 
@@ -23,6 +24,10 @@ const statements = [
   `ALTER TABLE "hazard-communication-app_scenario" ADD COLUMN IF NOT EXISTS "modelSummary" text`,
   `ALTER TABLE "hazard-communication-app_scenario" ADD COLUMN IF NOT EXISTS "organizationId" varchar(255)`,
   `CREATE INDEX IF NOT EXISTS "scenario_organization_idx" ON "hazard-communication-app_scenario" ("organizationId")`,
+  `ALTER TABLE "hazard-communication-app_persona" ADD COLUMN IF NOT EXISTS "organizationId" varchar(255)`,
+  `ALTER TABLE "hazard-communication-app_persona" ADD COLUMN IF NOT EXISTS "isCustom" boolean DEFAULT false NOT NULL`,
+  `CREATE INDEX IF NOT EXISTS "persona_organization_idx" ON "hazard-communication-app_persona" ("organizationId")`,
+  `CREATE INDEX IF NOT EXISTS "persona_is_custom_idx" ON "hazard-communication-app_persona" ("isCustom")`,
 ];
 
 try {

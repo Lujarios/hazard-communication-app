@@ -22,6 +22,8 @@ export async function ensurePersonasSeeded() {
   await db.insert(personas).values(
     workerPersonas.map((persona) => ({
       id: persona.id,
+      organizationId: null,
+      isCustom: false,
       name: persona.name,
       roleDescription: persona.description,
       evaluationInstructions:

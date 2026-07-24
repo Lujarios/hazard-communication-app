@@ -170,20 +170,35 @@ export const scenarioHazards = createTable(
   (t) => [index("scenario_hazard_scenario_idx").on(t.scenarioId)],
 );
 
-export const personas = createTable("persona", (d) => ({
-  id: d.varchar({ length: 64 }).primaryKey(),
-  name: d.varchar({ length: 256 }).notNull(),
-  roleDescription: d.text().notNull(),
-  evaluationInstructions: d.text().notNull(),
-  initials: d.varchar({ length: 8 }).notNull(),
-  avatarColor: d.varchar({ length: 64 }).notNull(),
-  imagePath: d.varchar({ length: 512 }),
-  createdAt: d
-    .timestamp({ withTimezone: true })
-    .$defaultFn(() => /* @__PURE__ */ new Date())
-    .notNull(),
-  updatedAt: d.timestamp({ withTimezone: true }).$onUpdate(() => new Date()),
-}));
+/**
+ * Premade personas: isCustom=false, organizationId=null (global catalog).
+ * Custom personas: isCustom=true, organizationId set to the creating manager's org.
+ */
+export const personas = createTable(
+  "persona",
+  (d) => ({
+    id: d.varchar({ length: 64 }).primaryKey(),
+    organizationId: d
+      .varchar({ length: 255 })
+      .references(() => organizations.id),
+    isCustom: d.boolean().notNull().default(false),
+    name: d.varchar({ length: 256 }).notNull(),
+    roleDescription: d.text().notNull(),
+    evaluationInstructions: d.text().notNull(),
+    initials: d.varchar({ length: 8 }).notNull(),
+    avatarColor: d.varchar({ length: 64 }).notNull(),
+    imagePath: d.varchar({ length: 512 }),
+    createdAt: d
+      .timestamp({ withTimezone: true })
+      .$defaultFn(() => /* @__PURE__ */ new Date())
+      .notNull(),
+    updatedAt: d.timestamp({ withTimezone: true }).$onUpdate(() => new Date()),
+  }),
+  (t) => [
+    index("persona_organization_idx").on(t.organizationId),
+    index("persona_is_custom_idx").on(t.isCustom),
+  ],
+);
 
 export const scenarioPersonas = createTable(
   "scenario_persona",
@@ -239,6 +254,7 @@ export const assessmentSessions = createTable(
 export const organizationsRelations = relations(organizations, ({ many }) => ({
   users: many(users),
   scenarios: many(scenarios),
+  personas: many(personas),
 }));
 
 export const usersRelations = relations(users, ({ one, many }) => ({
@@ -275,7 +291,11 @@ export const scenarioHazardsRelations = relations(scenarioHazards, ({ one }) => 
   }),
 }));
 
-export const personasRelations = relations(personas, ({ many }) => ({
+export const personasRelations = relations(personas, ({ one, many }) => ({
+  organization: one(organizations, {
+    fields: [personas.organizationId],
+    references: [organizations.id],
+  }),
   scenarioPersonas: many(scenarioPersonas),
 }));
 

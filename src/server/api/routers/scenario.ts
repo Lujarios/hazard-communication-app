@@ -1,5 +1,5 @@
 import { TRPCError } from "@trpc/server";
-import { and, desc, eq } from "drizzle-orm";
+import { and, asc, desc, eq, or } from "drizzle-orm";
 import { z } from "zod";
 
 import {
@@ -9,12 +9,17 @@ import {
 } from "~/server/api/trpc";
 import type { createTRPCContext } from "~/server/api/trpc";
 import {
+  personas,
   scenarioHazards,
   scenarioPersonas,
   scenarios,
 } from "~/server/db/schema";
 import { ensureAppSeeded } from "~/server/db/seed-construction-demo";
 import { ensurePersonasSeeded } from "~/server/db/seed-personas";
+import {
+  PERSONA_AVATAR_COLORS,
+  derivePersonaInitials,
+} from "~/types/persona";
 
 type ScenarioRouterContext = Awaited<ReturnType<typeof createTRPCContext>>;
 
@@ -45,6 +50,30 @@ const updateScenarioInputSchema = scenarioInputSchema.extend({
   id: z.string().uuid(),
 });
 
+const avatarColorValues = PERSONA_AVATAR_COLORS.map((color) => color.value) as [
+  (typeof PERSONA_AVATAR_COLORS)[number]["value"],
+  ...(typeof PERSONA_AVATAR_COLORS)[number]["value"][],
+];
+
+const createPersonaInputSchema = z.object({
+  name: z.string().trim().min(1, "Persona name is required").max(256),
+  roleDescription: z
+    .string()
+    .trim()
+    .min(1, "Role / description is required"),
+  evaluationInstructions: z
+    .string()
+    .trim()
+    .min(1, "Evaluation instructions are required"),
+  initials: z
+    .string()
+    .trim()
+    .max(8)
+    .optional()
+    .transform((value) => (value && value.length > 0 ? value : undefined)),
+  avatarColor: z.enum(avatarColorValues).optional(),
+});
+
 function requireOrganizationId(organizationId: string | null | undefined) {
   if (!organizationId) {
     throw new TRPCError({
@@ -61,13 +90,30 @@ function isAdminRole(role: string | undefined) {
   return role === "admin";
 }
 
+/** Premade (global) personas plus custom personas for the given org. */
+function personasAvailableToOrganization(organizationId: string | null) {
+  if (!organizationId) {
+    return eq(personas.isCustom, false);
+  }
+
+  return or(
+    eq(personas.isCustom, false),
+    and(
+      eq(personas.isCustom, true),
+      eq(personas.organizationId, organizationId),
+    ),
+  );
+}
+
 async function validatePersonaIds(
   ctx: ScenarioRouterContext,
   personaIds: string[],
+  organizationId: string | null,
 ) {
   await ensurePersonasSeeded();
 
   const availablePersonas = await ctx.db.query.personas.findMany({
+    where: personasAvailableToOrganization(organizationId),
     columns: { id: true },
   });
   const availablePersonaIds = new Set(
@@ -80,7 +126,7 @@ async function validatePersonaIds(
   if (invalidPersonaIds.length > 0) {
     throw new TRPCError({
       code: "BAD_REQUEST",
-      message: `Unknown persona IDs: ${invalidPersonaIds.join(", ")}`,
+      message: `Unknown or unavailable persona IDs: ${invalidPersonaIds.join(", ")}`,
     });
   }
 }
@@ -148,10 +194,57 @@ export const scenarioRouter = createTRPCRouter({
   listPersonas: protectedProcedure.query(async ({ ctx }) => {
     await ensurePersonasSeeded();
 
+    const organizationId = ctx.session.user.organizationId ?? null;
+
     return ctx.db.query.personas.findMany({
-      orderBy: (personaTable, { asc }) => [asc(personaTable.name)],
+      where: personasAvailableToOrganization(organizationId),
+      orderBy: [
+        asc(personas.isCustom),
+        asc(personas.name),
+      ],
     });
   }),
+
+  /**
+   * Create an org-scoped custom persona for use in scenario building.
+   * Premade catalog personas remain global (organizationId null, isCustom false).
+   */
+  createPersona: protectedProcedure
+    .input(createPersonaInputSchema)
+    .mutation(async ({ ctx, input }) => {
+      const organizationId = requireOrganizationId(
+        ctx.session.user.organizationId,
+      );
+
+      const initials =
+        input.initials?.toUpperCase() ?? derivePersonaInitials(input.name);
+      const avatarColor =
+        input.avatarColor ?? PERSONA_AVATAR_COLORS[0]!.value;
+
+      const [createdPersona] = await ctx.db
+        .insert(personas)
+        .values({
+          id: crypto.randomUUID(),
+          organizationId,
+          isCustom: true,
+          name: input.name,
+          roleDescription: input.roleDescription,
+          evaluationInstructions: input.evaluationInstructions,
+          initials,
+          avatarColor,
+          imagePath: null,
+        })
+        .returning();
+
+      if (!createdPersona) {
+        throw new TRPCError({
+          code: "INTERNAL_SERVER_ERROR",
+          message: "Failed to create persona",
+        });
+      }
+
+      return createdPersona;
+    }),
 
   /** Public: assessment takers open scenarios by share link without login. */
   getById: publicProcedure
@@ -190,7 +283,7 @@ export const scenarioRouter = createTRPCRouter({
       const organizationId = requireOrganizationId(
         ctx.session.user.organizationId,
       );
-      await validatePersonaIds(ctx, input.personaIds);
+      await validatePersonaIds(ctx, input.personaIds, organizationId);
 
       const [createdScenario] = await ctx.db
         .insert(scenarios)
@@ -240,7 +333,11 @@ export const scenarioRouter = createTRPCRouter({
         });
       }
 
-      await validatePersonaIds(ctx, input.personaIds);
+      // Validate against the scenario's org so admins editing another org's
+      // scenario can only attach that org's custom personas (+ premade).
+      const personaOrgId =
+        existingScenario.organizationId ?? organizationId ?? null;
+      await validatePersonaIds(ctx, input.personaIds, personaOrgId);
 
       const [updatedScenario] = await ctx.db
         .update(scenarios)
