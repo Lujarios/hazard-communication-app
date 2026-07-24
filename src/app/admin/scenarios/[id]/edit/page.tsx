@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 
 import { ScenarioBuilderForm } from "~/components/admin/ScenarioBuilderForm";
+import { ScenarioShareLink } from "~/components/admin/ScenarioShareLink";
 import { AppHeader } from "~/components/demo/AppHeader";
 import { toScenarioFormValues } from "~/types/scenario";
 import { auth } from "~/server/auth";
@@ -54,6 +55,14 @@ export default async function EditScenarioPage({
               Back to scenarios
             </Link>
           </p>
+        </div>
+
+        <div className="mb-6">
+          <ScenarioShareLink
+            embedded
+            scenarioId={scenario.id}
+            scenarioTitle={scenario.title}
+          />
         </div>
 
         <ScenarioBuilderForm

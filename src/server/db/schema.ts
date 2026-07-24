@@ -1,5 +1,10 @@
 import { relations } from "drizzle-orm";
-import { index, pgTableCreator, primaryKey } from "drizzle-orm/pg-core";
+import {
+  index,
+  pgTableCreator,
+  primaryKey,
+  uniqueIndex,
+} from "drizzle-orm/pg-core";
 import { type AdapterAccount } from "next-auth/adapters";
 
 /**
@@ -198,6 +203,39 @@ export const scenarioPersonas = createTable(
   ],
 );
 
+/**
+ * Assessment sessions for trainee access via short join codes.
+ * Managers generate a code instead of sharing a raw scenario UUID.
+ * Auth.js `sessions` remain separate (manager login only).
+ */
+export const assessmentSessions = createTable(
+  "assessment_session",
+  (d) => ({
+    id: d.uuid().primaryKey().defaultRandom(),
+    scenarioId: d
+      .uuid()
+      .notNull()
+      .references(() => scenarios.id, { onDelete: "cascade" }),
+    /** 6-character shareable code, e.g. ABC123 */
+    joinCode: d.varchar({ length: 6 }).notNull(),
+    /** active = trainees can join; closed = code no longer accepted */
+    status: d.varchar({ length: 16 }).notNull().default("active"),
+    createdByUserId: d
+      .varchar({ length: 255 })
+      .references(() => users.id, { onDelete: "set null" }),
+    createdAt: d
+      .timestamp({ withTimezone: true })
+      .$defaultFn(() => /* @__PURE__ */ new Date())
+      .notNull(),
+    updatedAt: d.timestamp({ withTimezone: true }).$onUpdate(() => new Date()),
+  }),
+  (t) => [
+    uniqueIndex("assessment_session_join_code_uidx").on(t.joinCode),
+    index("assessment_session_scenario_idx").on(t.scenarioId),
+    index("assessment_session_status_idx").on(t.status),
+  ],
+);
+
 export const organizationsRelations = relations(organizations, ({ many }) => ({
   users: many(users),
   scenarios: many(scenarios),
@@ -227,6 +265,7 @@ export const scenariosRelations = relations(scenarios, ({ one, many }) => ({
   }),
   hazards: many(scenarioHazards),
   scenarioPersonas: many(scenarioPersonas),
+  assessmentSessions: many(assessmentSessions),
 }));
 
 export const scenarioHazardsRelations = relations(scenarioHazards, ({ one }) => ({
@@ -250,6 +289,20 @@ export const scenarioPersonasRelations = relations(
     persona: one(personas, {
       fields: [scenarioPersonas.personaId],
       references: [personas.id],
+    }),
+  }),
+);
+
+export const assessmentSessionsRelations = relations(
+  assessmentSessions,
+  ({ one }) => ({
+    scenario: one(scenarios, {
+      fields: [assessmentSessions.scenarioId],
+      references: [scenarios.id],
+    }),
+    createdBy: one(users, {
+      fields: [assessmentSessions.createdByUserId],
+      references: [users.id],
     }),
   }),
 );

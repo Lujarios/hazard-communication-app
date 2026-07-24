@@ -66,6 +66,9 @@ export function HomePage({ demoScenarioId }: HomePageProps) {
               <Link href={sampleAssessmentPath}>Try sample assessment</Link>
             </Button>
             <Button asChild size="lg" variant="outline">
+              <Link href="/join">Join with a code</Link>
+            </Button>
+            <Button asChild size="lg" variant="outline">
               <Link href="/admin/scenarios">Manage scenarios</Link>
             </Button>
           </div>
