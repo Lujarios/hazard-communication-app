@@ -12,12 +12,14 @@ import {
 import { useEffect, useState } from "react";
 
 import { PersonaCharacteristicTags } from "~/components/admin/PersonaCharacteristicTags";
+import { StarRating } from "~/components/demo/StarRating";
 import { Avatar, AvatarFallback } from "~/components/ui/avatar";
 import { Badge } from "~/components/ui/badge";
 import { Button } from "~/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card";
+import { personaCommunicationCriteria } from "~/lib/persona-communication-rubric";
 import type { AssessmentPersona } from "~/types/assessment";
-import type { PersonaFeedback } from "~/types/feedback";
+import type { FollowUpQuestionCandidate, PersonaFeedback } from "~/types/feedback";
 import { cn } from "~/lib/utils";
 
 function AudioBars({ active }: { active: boolean }) {
@@ -47,8 +49,25 @@ function getPersonaFeedback(
   return personaFeedback?.find((entry) => entry.personaId === personaId);
 }
 
+function getPersonaFollowUpQuestions(
+  feedback?: PersonaFeedback,
+): FollowUpQuestionCandidate[] {
+  if (feedback?.followUpQuestionCandidates?.length) {
+    return feedback.followUpQuestionCandidates.filter((candidate) =>
+      candidate.question.trim(),
+    );
+  }
+
+  const legacyQuestion = feedback?.question?.trim();
+  if (legacyQuestion) {
+    return [{ question: legacyQuestion, reason: "" }];
+  }
+
+  return [];
+}
+
 function hasPersonaQuestion(feedback?: PersonaFeedback): boolean {
-  return Boolean(feedback?.question?.trim());
+  return getPersonaFollowUpQuestions(feedback).length > 0;
 }
 
 type PersonaListenersProps = {
@@ -142,7 +161,8 @@ function PersonaDetailsDialog({
   feedback?: PersonaFeedback;
   onClose: () => void;
 }) {
-  const question = feedback?.question?.trim();
+  const questions = getPersonaFollowUpQuestions(feedback);
+  const communicationScores = feedback?.scores;
 
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
@@ -165,7 +185,7 @@ function PersonaDetailsDialog({
         role="dialog"
         aria-modal="true"
         aria-labelledby={`persona-details-${persona.id}`}
-        className="w-full max-w-md rounded-xl border border-slate-200 bg-white p-4 shadow-lg"
+        className="w-full max-w-md max-h-[90vh] overflow-y-auto rounded-xl border border-slate-200 bg-white p-4 shadow-lg"
         onClick={(event) => event.stopPropagation()}
       >
         <div className="flex items-start gap-3">
@@ -223,17 +243,93 @@ function PersonaDetailsDialog({
                 className="mb-1 inline size-3.5 text-[#1e4a8c]/70"
                 aria-hidden
               />{" "}
-              {feedback.reaction}
+              {feedback.shortFeedback ?? feedback.reaction}
             </blockquote>
 
-            {question ? (
+            {communicationScores ? (
+              <div className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2">
+                <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-600">
+                  Communication from this worker&apos;s view
+                </p>
+                <ul className="mt-2 space-y-1.5">
+                  {personaCommunicationCriteria.map((criterion) => {
+                    const value = communicationScores[criterion.id];
+
+                    return (
+                      <li
+                        key={criterion.id}
+                        className="flex items-center justify-between gap-2"
+                      >
+                        <span className="text-xs text-slate-700">
+                          {criterion.label}
+                        </span>
+                        <StarRating
+                          value={value}
+                          size="sm"
+                          label={`${criterion.label}: ${value} out of 5 stars`}
+                        />
+                      </li>
+                    );
+                  })}
+                </ul>
+              </div>
+            ) : null}
+
+            {feedback.understoodPoints?.length ? (
+              <div>
+                <p className="text-[10px] font-semibold uppercase tracking-wide text-emerald-800">
+                  What this worker understood
+                </p>
+                <ul className="mt-1 list-disc space-y-0.5 pl-4 text-sm text-slate-700">
+                  {feedback.understoodPoints.map((point) => (
+                    <li key={point}>{point}</li>
+                  ))}
+                </ul>
+              </div>
+            ) : null}
+
+            {feedback.unclearPoints?.length ? (
+              <div>
+                <p className="text-[10px] font-semibold uppercase tracking-wide text-amber-800">
+                  What was unclear
+                </p>
+                <ul className="mt-1 list-disc space-y-0.5 pl-4 text-sm text-slate-700">
+                  {feedback.unclearPoints.map((point) => (
+                    <li key={point}>{point}</li>
+                  ))}
+                </ul>
+              </div>
+            ) : null}
+
+            {feedback.missedCriticalInformation?.length ? (
+              <div>
+                <p className="text-[10px] font-semibold uppercase tracking-wide text-red-800">
+                  Still missing for this worker
+                </p>
+                <ul className="mt-1 list-disc space-y-0.5 pl-4 text-sm text-slate-700">
+                  {feedback.missedCriticalInformation.map((item) => (
+                    <li key={item.description}>{item.description}</li>
+                  ))}
+                </ul>
+              </div>
+            ) : null}
+
+            {questions.length > 0 ? (
               <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2">
                 <p className="text-[10px] font-semibold uppercase tracking-wide text-amber-800">
-                  Question for you
+                  {questions.length === 1
+                    ? "Question for you"
+                    : "Questions for you"}
                 </p>
-                <p className="mt-1 text-sm leading-relaxed text-amber-950">
-                  {question}
-                </p>
+                <ul className="mt-1 space-y-2">
+                  {questions.map((candidate) => (
+                    <li key={candidate.question}>
+                      <p className="text-sm leading-relaxed text-amber-950">
+                        {candidate.question}
+                      </p>
+                    </li>
+                  ))}
+                </ul>
               </div>
             ) : null}
           </div>

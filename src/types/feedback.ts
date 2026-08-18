@@ -40,13 +40,45 @@ export type MissedItem = {
   relatedHazardId?: string;
 };
 
+export type PersonaCommunicationScores = {
+  clarity: StarRating;
+  completeness: StarRating;
+  understandability: StarRating;
+  actionability: StarRating;
+};
+
+export type PersonaMissedCriticalInformation = {
+  description: string;
+  severity: MissedItemSeverity;
+  relatedHazardId?: string;
+};
+
+export type FollowUpQuestionCandidate = {
+  /** In-character question this worker could ask the speaker. */
+  question: string;
+  /** Why this question is needed from this worker's perspective. */
+  reason: string;
+  relatedHazardId?: string | null;
+};
+
 export type PersonaFeedback = {
   personaId: string;
+  /** In-character summary; same text as shortFeedback (kept for existing UI). */
   reaction: string;
+  shortFeedback: string;
   understood: boolean;
+  wouldKnowWhatActionToTake: boolean;
+  hadAmbiguousInformation: boolean;
+  scores: PersonaCommunicationScores;
+  /** Mean of the four persona communication scores. */
+  overallStars: StarRating;
+  understoodPoints: string[];
+  unclearPoints: string[];
+  missedCriticalInformation: PersonaMissedCriticalInformation[];
+  followUpQuestionCandidates: FollowUpQuestionCandidate[];
   /**
-   * Optional in-character question pointing at a missed hazard/control.
-   * Most personas should leave this null; at most one or two should ask.
+   * Primary follow-up for existing UI — first candidate, or null when none.
+   * Later clarification-attempt features should use followUpQuestionCandidates.
    */
   question?: string | null;
 };
@@ -55,7 +87,7 @@ export type SafetyTalkFeedback = {
   criteriaRatings: CriterionRating[];
   missedItems: MissedItem[];
   overallSummary: string;
-  /** Mean star rating across rubric criteria, rounded to nearest half-star for display. */
+  /** Mean star rating across the objective rubric criteria. */
   overallStars: StarRating;
   personaFeedback?: PersonaFeedback[];
 };

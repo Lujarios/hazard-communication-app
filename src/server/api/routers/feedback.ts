@@ -3,12 +3,14 @@ import { and, eq } from "drizzle-orm";
 import { z } from "zod";
 
 import { createTRPCRouter, publicProcedure } from "~/server/api/trpc";
+import { toPersonaEvaluationInserts } from "~/server/evaluation/persist-persona-evaluations";
 import {
   evaluateSafetyTalk,
   SafetyTalkEvaluationError,
 } from "~/server/openai/evaluate-safety-talk";
 import { loadScenarioEvaluationContext } from "~/server/scenarios/load-evaluation-context";
 import {
+  assessmentAttemptPersonaEvaluations,
   assessmentAttempts,
   assessmentSessions,
 } from "~/server/db/schema";
@@ -86,17 +88,38 @@ export const feedbackRouter = createTRPCRouter({
           }
         }
 
-        await ctx.db.insert(assessmentAttempts).values({
-          anonymousParticipantId: input.anonymousParticipantId,
-          scenarioId: input.scenarioId,
-          assessmentSessionId,
-          joinCode,
-          transcript: input.transcript,
-          overallStars: feedback.overallStars,
-          overallSummary: feedback.overallSummary,
-          criteriaRatings: feedback.criteriaRatings,
-          missedItems: feedback.missedItems,
-          personaFeedback: feedback.personaFeedback ?? null,
+        await ctx.db.transaction(async (tx) => {
+          const [attempt] = await tx
+            .insert(assessmentAttempts)
+            .values({
+              anonymousParticipantId: input.anonymousParticipantId,
+              scenarioId: input.scenarioId,
+              assessmentSessionId,
+              joinCode,
+              transcript: input.transcript,
+              overallStars: feedback.overallStars,
+              overallSummary: feedback.overallSummary,
+              criteriaRatings: feedback.criteriaRatings,
+              missedItems: feedback.missedItems,
+              personaFeedback: feedback.personaFeedback ?? null,
+            })
+            .returning({ id: assessmentAttempts.id });
+
+          if (!attempt) {
+            throw new Error("Assessment attempt insert did not return an id.");
+          }
+
+          const personaRows = toPersonaEvaluationInserts(
+            attempt.id,
+            feedback.personaFeedback ?? [],
+            evaluationContext.personas,
+          );
+
+          if (personaRows.length > 0) {
+            await tx
+              .insert(assessmentAttemptPersonaEvaluations)
+              .values(personaRows);
+          }
         });
       } catch (error) {
         console.error("Failed to persist assessment attempt:", error);

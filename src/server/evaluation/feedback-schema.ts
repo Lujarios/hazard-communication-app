@@ -1,10 +1,15 @@
 import { z } from "zod";
 
+import {
+  computePersonaCommunicationStars,
+} from "~/lib/persona-communication-rubric";
 import { safetyRubricCriteria } from "~/lib/safety-rubric";
 import type {
   CriterionRating,
+  FollowUpQuestionCandidate,
   MissedItem,
   PersonaFeedback,
+  PersonaMissedCriticalInformation,
   SafetyTalkFeedback,
   StarRating,
 } from "~/types/feedback";
@@ -37,6 +42,35 @@ export const missedItemResponseSchema = z.object({
   relatedHazardId: z.string().nullable(),
 });
 
+const personaMissedCriticalInformationResponseSchema = z.object({
+  description: z.string().min(1),
+  severity: z.enum(["high", "medium", "info"]),
+  relatedHazardId: z.string().nullable(),
+});
+
+const followUpQuestionCandidateResponseSchema = z.object({
+  question: z.string().min(1),
+  reason: z.string().min(1),
+  relatedHazardId: z.string().nullable(),
+});
+
+const personaCommunicationScoresResponseSchema = z.object({
+  clarity: starRatingSchema,
+  completeness: starRatingSchema,
+  understandability: starRatingSchema,
+  actionability: starRatingSchema,
+});
+
+export const MAX_FOLLOW_UP_QUESTIONS_PER_PERSONA = 3;
+
+const VAGUE_FOLLOW_UP_PATTERNS = [
+  /^can you (please )?tell me more\??$/i,
+  /^can you (please )?clarify\??$/i,
+  /^can you (please )?clarify the hazards\??$/i,
+  /^what (else )?should i know\??$/i,
+  /^any (more )?details\??$/i,
+];
+
 export function createSafetyTalkEvaluationResponseSchema(
   personaIds: string[],
 ) {
@@ -48,19 +82,27 @@ export function createSafetyTalkEvaluationResponseSchema(
     personaIds as [string, ...string[]],
   );
 
-  const personaFeedbackResponseSchema = z.object({
+  const personaEvaluationResponseSchema = z.object({
     personaId: workerPersonaIdSchema,
-    reaction: z.string().min(1),
+    scores: personaCommunicationScoresResponseSchema,
     understood: z.boolean(),
-    /** Null when this persona does not need to ask a follow-up question. */
-    question: z.string().nullable(),
+    hadAmbiguousInformation: z.boolean(),
+    understoodPoints: z.array(z.string().min(1)),
+    unclearPoints: z.array(z.string().min(1)),
+    missedCriticalInformation: z.array(
+      personaMissedCriticalInformationResponseSchema,
+    ),
+    followUpQuestionCandidates: z.array(
+      followUpQuestionCandidateResponseSchema,
+    ),
+    shortFeedback: z.string().min(1),
   });
 
   return z.object({
     criteriaRatings: z.array(criterionRatingResponseSchema),
     missedItems: z.array(missedItemResponseSchema),
     overallSummary: z.string().min(1),
-    personaFeedback: z.array(personaFeedbackResponseSchema),
+    personaEvaluations: z.array(personaEvaluationResponseSchema),
   });
 }
 
@@ -78,6 +120,47 @@ export function computeOverallStars(ratings: CriterionRating[]): StarRating {
   const rounded = Math.round(mean);
 
   return Math.min(5, Math.max(1, rounded)) as StarRating;
+}
+
+export function isVagueFollowUpQuestion(question: string): boolean {
+  const normalized = question.trim();
+  if (normalized.length < 12) {
+    return true;
+  }
+
+  return VAGUE_FOLLOW_UP_PATTERNS.some((pattern) => pattern.test(normalized));
+}
+
+export function normalizeFollowUpQuestionCandidates(
+  candidates: FollowUpQuestionCandidate[],
+): FollowUpQuestionCandidate[] {
+  const seen = new Set<string>();
+  const normalized: FollowUpQuestionCandidate[] = [];
+
+  for (const candidate of candidates) {
+    const question = candidate.question.trim();
+    if (!question || isVagueFollowUpQuestion(question)) {
+      continue;
+    }
+
+    const key = question.toLowerCase();
+    if (seen.has(key)) {
+      continue;
+    }
+
+    seen.add(key);
+    normalized.push({
+      question,
+      reason: candidate.reason.trim(),
+      relatedHazardId: candidate.relatedHazardId ?? null,
+    });
+
+    if (normalized.length >= MAX_FOLLOW_UP_QUESTIONS_PER_PERSONA) {
+      break;
+    }
+  }
+
+  return normalized;
 }
 
 export function toSafetyTalkFeedback(
@@ -109,7 +192,7 @@ export function toSafetyTalkFeedback(
   }));
 
   const returnedPersonaIds = new Set(
-    response.personaFeedback.map((item) => item.personaId),
+    response.personaEvaluations.map((item) => item.personaId),
   );
   const missingPersonas = expectedPersonaIds.filter(
     (id) => !returnedPersonaIds.has(id),
@@ -121,15 +204,26 @@ export function toSafetyTalkFeedback(
     );
   }
 
-  const personaFeedback: PersonaFeedback[] = limitPersonaQuestions(
-    response.personaFeedback.map((item) => ({
-      personaId: item.personaId,
-      reaction: item.reaction,
-      understood: item.understood,
-      question: normalizePersonaQuestion(item.question),
-    })),
-    missedItems,
+  const extraPersonas = [...returnedPersonaIds].filter(
+    (id) => !expectedPersonaIds.includes(id),
   );
+  if (extraPersonas.length > 0) {
+    throw new Error(
+      `Evaluation response included unexpected personas: ${extraPersonas.join(", ")}`,
+    );
+  }
+
+  const personaFeedback: PersonaFeedback[] = expectedPersonaIds.map((personaId) => {
+    const item = response.personaEvaluations.find(
+      (evaluation) => evaluation.personaId === personaId,
+    );
+
+    if (!item) {
+      throw new Error(`Evaluation response missing persona feedback: ${personaId}`);
+    }
+
+    return toPersonaFeedback(item);
+  });
 
   return {
     criteriaRatings,
@@ -140,35 +234,47 @@ export function toSafetyTalkFeedback(
   };
 }
 
-const MAX_PERSONA_QUESTIONS = 2;
+function toPersonaFeedback(
+  item: SafetyTalkEvaluationResponse["personaEvaluations"][number],
+): PersonaFeedback {
+  const scores = {
+    clarity: item.scores.clarity,
+    completeness: item.scores.completeness,
+    understandability: item.scores.understandability,
+    actionability: item.scores.actionability,
+  };
 
-function normalizePersonaQuestion(question: string | null | undefined): string | null {
-  const trimmed = question?.trim();
-  return trimmed && trimmed.length > 0 ? trimmed : null;
-}
+  const missedCriticalInformation: PersonaMissedCriticalInformation[] =
+    item.missedCriticalInformation.map((entry) => ({
+      description: entry.description.trim(),
+      severity: entry.severity,
+      relatedHazardId: entry.relatedHazardId ?? undefined,
+    }));
 
-/**
- * Keep the trainee from being flooded: at most two questions, and none
- * when the talk did not miss anything material.
- */
-function limitPersonaQuestions(
-  personaFeedback: PersonaFeedback[],
-  missedItems: MissedItem[],
-): PersonaFeedback[] {
-  if (missedItems.length === 0) {
-    return personaFeedback.map((entry) => ({ ...entry, question: null }));
-  }
-
-  const keepIds = new Set(
-    [...personaFeedback]
-      .filter((entry) => entry.question)
-      .sort((left, right) => Number(left.understood) - Number(right.understood))
-      .slice(0, MAX_PERSONA_QUESTIONS)
-      .map((entry) => entry.personaId),
+  const followUpQuestionCandidates = normalizeFollowUpQuestionCandidates(
+    item.followUpQuestionCandidates.map((candidate) => ({
+      question: candidate.question,
+      reason: candidate.reason,
+      relatedHazardId: candidate.relatedHazardId,
+    })),
   );
 
-  return personaFeedback.map((entry) => ({
-    ...entry,
-    question: keepIds.has(entry.personaId) ? entry.question : null,
-  }));
+  const shortFeedback = item.shortFeedback.trim();
+
+  return {
+    personaId: item.personaId,
+    reaction: shortFeedback,
+    shortFeedback,
+    understood: item.understood,
+    wouldKnowWhatActionToTake: scores.actionability >= 4,
+    hadAmbiguousInformation: item.hadAmbiguousInformation,
+    scores,
+    overallStars: computePersonaCommunicationStars(scores),
+    understoodPoints: item.understoodPoints.map((point) => point.trim()).filter(Boolean),
+    unclearPoints: item.unclearPoints.map((point) => point.trim()).filter(Boolean),
+    missedCriticalInformation,
+    followUpQuestionCandidates,
+    question: followUpQuestionCandidates[0]?.question ?? null,
+  };
 }
+

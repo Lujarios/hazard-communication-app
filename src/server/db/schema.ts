@@ -299,6 +299,59 @@ export const assessmentAttempts = createTable(
   ],
 );
 
+/**
+ * One structured evaluation per assigned persona for a single attempt.
+ * Characteristic columns are a snapshot at scoring time so later persona
+ * edits do not rewrite historical analysis.
+ */
+export const assessmentAttemptPersonaEvaluations = createTable(
+  "assessment_attempt_persona_evaluation",
+  (d) => ({
+    id: d.uuid().primaryKey().defaultRandom(),
+    assessmentAttemptId: d
+      .uuid()
+      .notNull()
+      .references(() => assessmentAttempts.id, { onDelete: "cascade" }),
+    personaId: d
+      .varchar({ length: 64 })
+      .notNull()
+      .references(() => personas.id),
+    experienceLevel: d.varchar({ length: 32 }),
+    jobRole: d.varchar({ length: 32 }),
+    jobRoleOther: d.varchar({ length: 128 }),
+    englishLiteracy: d.varchar({ length: 32 }),
+    projectExperience: d.varchar({ length: 32 }),
+    clarityStars: d.integer().notNull(),
+    completenessStars: d.integer().notNull(),
+    understandabilityStars: d.integer().notNull(),
+    actionabilityStars: d.integer().notNull(),
+    overallStars: d.integer().notNull(),
+    understood: d.boolean().notNull(),
+    wouldKnowWhatActionToTake: d.boolean().notNull(),
+    hadAmbiguousInformation: d.boolean().notNull(),
+    shortFeedback: d.text().notNull(),
+    understoodPoints: d.jsonb().notNull(),
+    unclearPoints: d.jsonb().notNull(),
+    missedCriticalInformation: d.jsonb().notNull(),
+    followUpQuestionCandidates: d.jsonb().notNull(),
+    createdAt: d
+      .timestamp({ withTimezone: true })
+      .$defaultFn(() => /* @__PURE__ */ new Date())
+      .notNull(),
+  }),
+  (t) => [
+    uniqueIndex("attempt_persona_eval_attempt_persona_uidx").on(
+      t.assessmentAttemptId,
+      t.personaId,
+    ),
+    index("attempt_persona_eval_attempt_idx").on(t.assessmentAttemptId),
+    index("attempt_persona_eval_persona_idx").on(t.personaId),
+    index("attempt_persona_eval_literacy_idx").on(t.englishLiteracy),
+    index("attempt_persona_eval_experience_idx").on(t.experienceLevel),
+    index("attempt_persona_eval_job_role_idx").on(t.jobRole),
+  ],
+);
+
 export const organizationsRelations = relations(organizations, ({ many }) => ({
   users: many(users),
   scenarios: many(scenarios),
@@ -346,6 +399,7 @@ export const personasRelations = relations(personas, ({ one, many }) => ({
     references: [organizations.id],
   }),
   scenarioPersonas: many(scenarioPersonas),
+  attemptEvaluations: many(assessmentAttemptPersonaEvaluations),
 }));
 
 export const scenarioPersonasRelations = relations(
@@ -379,7 +433,7 @@ export const assessmentSessionsRelations = relations(
 
 export const assessmentAttemptsRelations = relations(
   assessmentAttempts,
-  ({ one }) => ({
+  ({ one, many }) => ({
     scenario: one(scenarios, {
       fields: [assessmentAttempts.scenarioId],
       references: [scenarios.id],
@@ -387,6 +441,21 @@ export const assessmentAttemptsRelations = relations(
     assessmentSession: one(assessmentSessions, {
       fields: [assessmentAttempts.assessmentSessionId],
       references: [assessmentSessions.id],
+    }),
+    personaEvaluations: many(assessmentAttemptPersonaEvaluations),
+  }),
+);
+
+export const assessmentAttemptPersonaEvaluationsRelations = relations(
+  assessmentAttemptPersonaEvaluations,
+  ({ one }) => ({
+    attempt: one(assessmentAttempts, {
+      fields: [assessmentAttemptPersonaEvaluations.assessmentAttemptId],
+      references: [assessmentAttempts.id],
+    }),
+    persona: one(personas, {
+      fields: [assessmentAttemptPersonaEvaluations.personaId],
+      references: [personas.id],
     }),
   }),
 );

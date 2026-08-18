@@ -1,10 +1,11 @@
+import { formatPersonaCommunicationRubricForPrompt } from "~/lib/persona-communication-rubric";
 import { formatRubricForPrompt } from "~/lib/safety-rubric";
 import {
   formatAnswerKeyForPrompt,
   type ScenarioAnswerKey,
 } from "~/lib/scenario-answer-keys";
+import { formatPersonaForEvaluationPrompt } from "~/server/evaluation/persona-interpretation";
 import type { EvaluationPersona } from "~/server/scenarios/load-evaluation-context";
-import { formatPersonaCharacteristicsForPrompt } from "~/types/persona";
 
 export type EvaluationPromptInput = {
   transcript: string;
@@ -18,20 +19,7 @@ export type EvaluationPromptMessages = {
 };
 
 function formatPersonasForPrompt(personas: EvaluationPersona[]): string {
-  return personas
-    .map((persona) => {
-      const characteristics = formatPersonaCharacteristicsForPrompt(persona);
-      const header = characteristics
-        ? `- ${persona.name} (id: ${persona.id}): ${characteristics}`
-        : `- ${persona.name} (id: ${persona.id})`;
-
-      return [
-        header,
-        `  Role: ${persona.description}`,
-        `  Evaluation instructions: ${persona.evaluationInstructions}`,
-      ].join("\n");
-    })
-    .join("\n");
+  return personas.map((persona) => formatPersonaForEvaluationPrompt(persona)).join("\n");
 }
 
 export function buildEvaluationPrompt({
@@ -40,31 +28,56 @@ export function buildEvaluationPrompt({
   personas,
 }: EvaluationPromptInput): EvaluationPromptMessages {
   const system = [
-    "You are an expert construction safety trainer evaluating a trainee's spoken pre-job hazard communication.",
-    "Score the transcript against the rubric and scenario answer key.",
-    "Be fair but rigorous: credit partial coverage, and call out specific gaps.",
+    "You are evaluating a trainee's spoken pre-job hazard communication for a construction safety training tool.",
+    "Return two layers of evaluation in structured JSON:",
+    "1. Objective scenario performance — how completely and accurately the talk covers the answer key, using the safety rubric.",
+    "2. Persona-specific communication — how effectively the same talk would communicate to each assigned worker, using that worker's characteristics.",
+    "",
+    "Be fair but rigorous. Credit partial coverage and differently worded but equivalent points. Call out specific gaps.",
     "Use plain language suitable for a trainee scorecard.",
     "",
-    "Rules:",
+    "Objective evaluation rules:",
     "- Assign exactly one rating (1–5 stars) for every rubric criterion listed below.",
     "- Compare the transcript to each scenario hazard and expected control in the answer key.",
     "- List specific missed hazards, controls, communication gaps, or procedural items in missedItems.",
-    "- Set relatedHazardId when a missed item maps to a scenario hazard id.",
+    "- Set relatedHazardId when a missed item maps to a scenario hazard id; otherwise null.",
     "- Emphasize life-threatening hazards (falls, suspended loads) when scoring life-threatening-emphasis.",
-    "- Provide personaFeedback with exactly one entry for every worker persona id listed below.",
-    "- Write each reaction in 1–2 sentences from that persona's perspective, using their job role, experience level, English literacy, and project experience.",
-    "- Set understood to true only if the talk was clear enough for that persona; use simpler wording in reactions for entry-level, limited-English, and developing-literacy personas when the talk was unclear.",
-    "- Persona questions: most personas must set question to null. Across ALL personas combined, include at most TWO questions, and prefer ONE when there is a single important gap.",
-    "- Do not give each persona a unique question. The trainee must not be flooded with follow-ups.",
-    "- If missedItems is empty or the talk covered the key hazards and controls, set every question to null.",
-    "- A question is only allowed when that persona would realistically be confused or at risk because of a specific missed item. Prefer the persona whose characteristics make the gap most relevant (for example a new hire or limited-English worker asking for a simpler missing control, or a supervisor asking about a missing lift plan or accountability step).",
-    "- When question is not null, it must be one short in-character question that points the trainee to a concrete missed hazard, control, or procedure from missedItems.",
-    "- Do not invent hazards that are not supported by the scenario answer key.",
+    "- Do not invent hazards that are not reasonably present in the scenario answer key.",
+    "- Do not treat a natural spoken restatement as a miss when the same meaning is clearly there.",
+    "- Do not punish filler words, restarts, or informal speech unless they actually hid a required point.",
     "",
-    "## Rubric criteria",
+    "Persona evaluation rules:",
+    "- Provide personaEvaluations with exactly one entry for every worker persona id listed below.",
+    "- Adopt that worker's perspective. Job role, experience level, English literacy, project experience, role description, and evaluation instructions must materially affect the scores and feedback.",
+    "- Differences between personas must be explainable from those characteristics plus a specific gap or strength in the transcript. Do not make personas randomly disagree for variety.",
+    "- An experienced foreman may understand shorthand that a new labourer would not.",
+    "- A worker with limited English needs simpler, more direct instructions; a fluent engineer may focus on technical accuracy.",
+    "- A new worker or someone with little project-type experience needs hazards and controls explained more explicitly.",
+    "- Someone with extensive experience on this type of project may understand context another worker would need explained.",
+    "- Score the four persona communication criteria (clarity, completeness, understandability, actionability) from THAT worker's perspective.",
+    "- Completeness for a persona is not a second copy of the objective hazard checklist. It asks whether THIS worker received the explanations they personally needed.",
+    "- Set understood true only if this worker grasped the talk well enough to work from it. They may still have follow-up questions about missing critical details.",
+    "- Set hadAmbiguousInformation true when something important was said unclearly, not merely omitted.",
+    "- understoodPoints: concrete things this worker clearly got. unclearPoints: things this worker heard but did not understand. missedCriticalInformation: important hazards/controls/actions this worker still would not know, with relatedHazardId when it maps to the answer key.",
+    "- shortFeedback: 1–2 sentences in that worker's voice. Make it specific and actionable for the trainee.",
+    "",
+    "Follow-up question candidates:",
+    "- These will be used later for clarification attempts. Generate only genuine candidates; do not redesign a conversation.",
+    "- Each question must arise from something missing, ambiguous, or poorly communicated for THAT worker.",
+    "- Each question must be answerable by the trainee, concise, and in the assigned persona's voice.",
+    "- Do not ask for information the trainee already clearly provided.",
+    "- Avoid vague questions such as \"Can you tell me more?\" or \"Can you clarify the hazards?\"",
+    "- Good examples: \"As the new worker on this crew, I'm not sure where you want me to stand while the lift is operating. Can you clarify?\" / \"You mentioned fall protection, but when exactly are we required to tie off?\"",
+    "- Use an empty followUpQuestionCandidates array when this worker needs no clarification.",
+    "- Include at most three candidates per persona. Prefer one strong question over several weak ones.",
+    "",
+    "## Objective rubric criteria",
     formatRubricForPrompt(),
     "",
-    "## Worker personas (for personaFeedback)",
+    "## Persona communication criteria",
+    formatPersonaCommunicationRubricForPrompt(),
+    "",
+    "## Worker personas",
     formatPersonasForPrompt(personas),
   ].join("\n");
 
@@ -75,7 +88,7 @@ export function buildEvaluationPrompt({
     "## Trainee transcript",
     transcript.trim(),
     "",
-    "Evaluate the transcript and return structured JSON matching the required schema.",
+    "Evaluate the transcript. Return structured JSON with objective rubric scores plus one personaEvaluations entry per worker persona.",
   ].join("\n");
 
   return { system, user };
