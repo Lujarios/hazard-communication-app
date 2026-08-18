@@ -22,7 +22,8 @@ const seedUsers = [
     id: SEED_USER_ACME_ADMIN_ID,
     name: "Alex Admin",
     email: "admin@acme.local",
-    organizationId: SEED_ORG_ACME_ID,
+    /** Platform Site Admin — not tied to a single organization. */
+    organizationId: null as string | null,
     role: "admin" as const,
   },
   {
@@ -37,12 +38,12 @@ const seedUsers = [
     name: "Blake Builder",
     email: "manager@beacon.local",
     organizationId: SEED_ORG_BEACON_ID,
-    role: "manager",
+    role: "manager" as const,
   },
 ] as const;
 
 /**
- * Idempotent seed for local/dev orgs + manager users (Credentials login).
+ * Idempotent seed for local/dev orgs + manager/Site Admin users (Credentials login).
  * Cognito users with the same email can link via allowDangerousEmailAccountLinking.
  */
 export async function ensureAuthSeeded(): Promise<void> {
@@ -72,10 +73,15 @@ export async function ensureAuthSeeded(): Promise<void> {
         emailVerified: new Date(),
       });
     } else {
-      // Keep local Credentials password in sync with SEED_DEV_PASSWORD.
+      // Keep local Credentials password + Site Admin role/org in sync for known seeds.
       await db
         .update(users)
-        .set({ passwordHash })
+        .set({
+          passwordHash,
+          role: user.role,
+          organizationId: user.organizationId,
+          name: user.name,
+        })
         .where(eq(users.id, existing.id));
     }
   }

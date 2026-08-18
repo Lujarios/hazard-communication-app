@@ -2,6 +2,7 @@ import { TRPCError } from "@trpc/server";
 import { and, asc, desc, eq, or } from "drizzle-orm";
 import { z } from "zod";
 
+import { isSiteAdmin } from "~/lib/roles";
 import {
   createTRPCRouter,
   protectedProcedure,
@@ -86,10 +87,6 @@ function requireOrganizationId(organizationId: string | null | undefined) {
   return organizationId;
 }
 
-function isAdminRole(role: string | undefined) {
-  return role === "admin";
-}
-
 /** Premade (global) personas plus custom personas for the given org. */
 function personasAvailableToOrganization(organizationId: string | null) {
   if (!organizationId) {
@@ -170,7 +167,7 @@ export const scenarioRouter = createTRPCRouter({
   list: protectedProcedure.query(async ({ ctx }) => {
     await ensureAppSeeded();
 
-    const admin = isAdminRole(ctx.session.user.role);
+    const admin = isSiteAdmin(ctx.session.user.role);
     if (!admin) {
       requireOrganizationId(ctx.session.user.organizationId);
     }
@@ -311,7 +308,7 @@ export const scenarioRouter = createTRPCRouter({
   update: protectedProcedure
     .input(updateScenarioInputSchema)
     .mutation(async ({ ctx, input }) => {
-      const admin = isAdminRole(ctx.session.user.role);
+      const admin = isSiteAdmin(ctx.session.user.role);
       const organizationId = admin
         ? ctx.session.user.organizationId
         : requireOrganizationId(ctx.session.user.organizationId);

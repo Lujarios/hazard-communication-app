@@ -8,6 +8,7 @@ import {
   JOIN_CODE_LENGTH,
   normalizeJoinCode,
 } from "~/lib/join-code";
+import { isSiteAdmin } from "~/lib/roles";
 import {
   createTRPCRouter,
   protectedProcedure,
@@ -32,10 +33,6 @@ const joinCodeInput = z.object({
     ),
 });
 
-function isAdminRole(role: string | undefined) {
-  return role === "admin";
-}
-
 async function assertCanManageScenario(
   ctx: {
     db: typeof db;
@@ -45,7 +42,7 @@ async function assertCanManageScenario(
   },
   scenarioId: string,
 ) {
-  const admin = isAdminRole(ctx.session.user.role);
+  const admin = isSiteAdmin(ctx.session.user.role);
   const scenario = await ctx.db.query.scenarios.findFirst({
     where: eq(scenarios.id, scenarioId),
     columns: { id: true, organizationId: true, title: true },

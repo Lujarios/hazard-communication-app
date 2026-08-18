@@ -2,6 +2,7 @@ import { TRPCError } from "@trpc/server";
 import { asc, desc, eq, inArray } from "drizzle-orm";
 import { z } from "zod";
 
+import { isSiteAdmin } from "~/lib/roles";
 import { getRubricCriterion } from "~/lib/safety-rubric";
 import {
   createTRPCRouter,
@@ -10,6 +11,7 @@ import {
 import type { createTRPCContext } from "~/server/api/trpc";
 import {
   assessmentAttempts,
+  organizations,
   scenarioHazards,
   scenarios,
 } from "~/server/db/schema";
@@ -38,20 +40,30 @@ function requireOrganizationId(organizationId: string | null | undefined) {
   return organizationId;
 }
 
-function isAdminRole(role: string | undefined) {
-  return role === "admin";
-}
-
-async function listAccessibleScenarios(ctx: AnalyticsContext) {
-  const admin = isAdminRole(ctx.session.user.role);
+async function listAccessibleScenarios(
+  ctx: AnalyticsContext,
+  organizationIdFilter?: string | null,
+) {
+  const admin = isSiteAdmin(ctx.session.user.role);
   if (!admin) {
     requireOrganizationId(ctx.session.user.organizationId);
   }
 
+  if (organizationIdFilter && !admin) {
+    throw new TRPCError({
+      code: "FORBIDDEN",
+      message: "Only Site Admins can filter analytics by organization",
+    });
+  }
+
+  const where = admin
+    ? organizationIdFilter
+      ? eq(scenarios.organizationId, organizationIdFilter)
+      : undefined
+    : eq(scenarios.organizationId, ctx.session.user.organizationId!);
+
   return ctx.db.query.scenarios.findMany({
-    where: admin
-      ? undefined
-      : eq(scenarios.organizationId, ctx.session.user.organizationId!),
+    where,
     columns: {
       id: true,
       title: true,
@@ -63,7 +75,7 @@ async function listAccessibleScenarios(ctx: AnalyticsContext) {
 }
 
 async function assertCanViewScenario(ctx: AnalyticsContext, scenarioId: string) {
-  const admin = isAdminRole(ctx.session.user.role);
+  const admin = isSiteAdmin(ctx.session.user.role);
   const scenario = await ctx.db.query.scenarios.findFirst({
     where: eq(scenarios.id, scenarioId),
     columns: { id: true, title: true, status: true, organizationId: true },
@@ -336,61 +348,93 @@ async function buildTopMissed(
 export const analyticsRouter = createTRPCRouter({
   /**
    * Org-scoped scenario list with aggregate attempt stats (no PII).
-   * Admins see all scenarios; managers see their organization only.
+   * Site Admins see all scenarios (optional org filter); managers see their org only.
    */
-  overview: protectedProcedure.query(async ({ ctx }) => {
-    const accessible = await listAccessibleScenarios(ctx);
-    if (accessible.length === 0) {
+  overview: protectedProcedure
+    .input(
+      z
+        .object({
+          organizationId: z.string().min(1).optional(),
+        })
+        .optional(),
+    )
+    .query(async ({ ctx, input }) => {
+      const organizationIdFilter = input?.organizationId;
+      const accessible = await listAccessibleScenarios(
+        ctx,
+        organizationIdFilter,
+      );
+      if (accessible.length === 0) {
+        return {
+          scenarios: [],
+          totals: {
+            attemptCount: 0,
+            uniqueParticipants: 0,
+            averageOverallStars: null as number | null,
+          },
+        };
+      }
+
+      const orgIds = [
+        ...new Set(
+          accessible
+            .map((scenario) => scenario.organizationId)
+            .filter((id): id is string => Boolean(id)),
+        ),
+      ];
+      const orgRows =
+        orgIds.length > 0
+          ? await ctx.db.query.organizations.findMany({
+              where: inArray(organizations.id, orgIds),
+              columns: { id: true, name: true },
+            })
+          : [];
+      const orgNameById = new Map(orgRows.map((org) => [org.id, org.name]));
+
+      const scenarioIds = accessible.map((scenario) => scenario.id);
+      const attempts = await ctx.db.query.assessmentAttempts.findMany({
+        where: inArray(assessmentAttempts.scenarioId, scenarioIds),
+        columns: {
+          scenarioId: true,
+          anonymousParticipantId: true,
+          overallStars: true,
+        },
+      });
+
+      const byScenario = new Map<string, typeof attempts>();
+      for (const attempt of attempts) {
+        const list = byScenario.get(attempt.scenarioId) ?? [];
+        list.push(attempt);
+        byScenario.set(attempt.scenarioId, list);
+      }
+
+      const allParticipantIds = new Set(
+        attempts.map((attempt) => attempt.anonymousParticipantId),
+      );
+
       return {
-        scenarios: [],
+        scenarios: accessible.map((scenario) => {
+          const scenarioAttempts = byScenario.get(scenario.id) ?? [];
+          return {
+            id: scenario.id,
+            title: scenario.title,
+            status: scenario.status,
+            organizationId: scenario.organizationId,
+            organizationName: scenario.organizationId
+              ? (orgNameById.get(scenario.organizationId) ?? "Unknown org")
+              : "Unassigned",
+            ...summarizeAttempts(scenarioAttempts),
+          };
+        }),
         totals: {
-          attemptCount: 0,
-          uniqueParticipants: 0,
-          averageOverallStars: null as number | null,
+          attemptCount: attempts.length,
+          uniqueParticipants: allParticipantIds.size,
+          averageOverallStars: average(
+            attempts.map((attempt) => attempt.overallStars),
+          ),
         },
       };
-    }
-
-    const scenarioIds = accessible.map((scenario) => scenario.id);
-    const attempts = await ctx.db.query.assessmentAttempts.findMany({
-      where: inArray(assessmentAttempts.scenarioId, scenarioIds),
-      columns: {
-        scenarioId: true,
-        anonymousParticipantId: true,
-        overallStars: true,
-      },
-    });
-
-    const byScenario = new Map<string, typeof attempts>();
-    for (const attempt of attempts) {
-      const list = byScenario.get(attempt.scenarioId) ?? [];
-      list.push(attempt);
-      byScenario.set(attempt.scenarioId, list);
-    }
-
-    const allParticipantIds = new Set(
-      attempts.map((attempt) => attempt.anonymousParticipantId),
-    );
-
-    return {
-      scenarios: accessible.map((scenario) => {
-        const scenarioAttempts = byScenario.get(scenario.id) ?? [];
-        return {
-          id: scenario.id,
-          title: scenario.title,
-          status: scenario.status,
-          ...summarizeAttempts(scenarioAttempts),
-        };
-      }),
-      totals: {
-        attemptCount: attempts.length,
-        uniqueParticipants: allParticipantIds.size,
-        averageOverallStars: average(
-          attempts.map((attempt) => attempt.overallStars),
-        ),
-      },
-    };
-  }),
+    }),
 
   /**
    * Detailed anonymous analytics for one scenario the manager can access.

@@ -10,6 +10,7 @@ import { initTRPC, TRPCError } from "@trpc/server";
 import superjson from "superjson";
 import { ZodError } from "zod";
 
+import { isSiteAdmin } from "~/lib/roles";
 import { auth } from "~/server/auth";
 import { db } from "~/server/db";
 
@@ -126,3 +127,21 @@ export const protectedProcedure = t.procedure
       },
     });
   });
+
+/**
+ * Site Admin only — platform-wide org/user management and global data views.
+ */
+export const siteAdminProcedure = protectedProcedure.use(({ ctx, next }) => {
+  if (!isSiteAdmin(ctx.session.user.role)) {
+    throw new TRPCError({
+      code: "FORBIDDEN",
+      message: "Site Admin access required",
+    });
+  }
+
+  return next({
+    ctx: {
+      session: { ...ctx.session, user: ctx.session.user },
+    },
+  });
+});

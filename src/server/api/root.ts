@@ -3,6 +3,7 @@ import { assessmentSessionRouter } from "~/server/api/routers/assessment-session
 import { feedbackRouter } from "~/server/api/routers/feedback";
 import { postRouter } from "~/server/api/routers/post";
 import { scenarioRouter } from "~/server/api/routers/scenario";
+import { siteAdminRouter } from "~/server/api/routers/site-admin";
 import { createCallerFactory, createTRPCRouter } from "~/server/api/trpc";
 
 /**
@@ -16,6 +17,7 @@ export const appRouter = createTRPCRouter({
   scenario: scenarioRouter,
   assessmentSession: assessmentSessionRouter,
   analytics: analyticsRouter,
+  siteAdmin: siteAdminRouter,
 });
 
 // export type definition of API

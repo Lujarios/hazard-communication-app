@@ -1,5 +1,7 @@
 import { type DefaultSession, type NextAuthConfig } from "next-auth";
 
+import { isSiteAdmin } from "~/lib/roles";
+
 /**
  * Edge-compatible Auth.js config (no DB adapter / Node-only imports).
  * Full providers + adapter are composed in `~/server/auth/index.ts`.
@@ -32,8 +34,13 @@ export const authConfig = {
   callbacks: {
     authorized({ auth, request }) {
       const pathname = request.nextUrl.pathname;
+      const isSiteAdminPath = pathname.startsWith("/admin/site");
       const isProtected =
         pathname.startsWith("/admin") || pathname.startsWith("/api/admin");
+
+      if (isSiteAdminPath) {
+        return isSiteAdmin(auth?.user?.role);
+      }
 
       if (isProtected) {
         return !!auth?.user;

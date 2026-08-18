@@ -3,21 +3,30 @@
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useSession } from "next-auth/react";
 import {
   CircleHelp,
   Home,
   LayoutDashboard,
   ChartColumn,
+  Shield,
 } from "lucide-react";
 
 import { HeaderAuthMenu } from "~/components/auth/HeaderAuthMenu";
+import { isSiteAdmin } from "~/lib/roles";
 import { cn } from "~/lib/utils";
 
-const navItems = [
+const baseNavItems = [
   { label: "Home", href: "/", icon: Home },
   { label: "Scenarios", href: "/admin/scenarios", icon: LayoutDashboard },
   { label: "Analytics", href: "/admin/analytics", icon: ChartColumn },
 ] as const;
+
+const siteAdminNavItem = {
+  label: "Site Admin",
+  href: "/admin/site",
+  icon: Shield,
+} as const;
 
 type AppHeaderProps = {
   onHelpClick?: () => void;
@@ -26,6 +35,12 @@ type AppHeaderProps = {
 
 export function AppHeader({ onHelpClick, highlightHelp = false }: AppHeaderProps) {
   const pathname = usePathname();
+  const { data: session } = useSession();
+  const showSiteAdmin = isSiteAdmin(session?.user?.role);
+
+  const navItems = showSiteAdmin
+    ? [...baseNavItems, siteAdminNavItem]
+    : [...baseNavItems];
 
   return (
     <header className="border-b border-slate-200 bg-white">

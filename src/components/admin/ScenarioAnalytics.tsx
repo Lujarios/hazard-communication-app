@@ -377,9 +377,26 @@ function ScenarioDetail({ scenarioId }: { scenarioId: string }) {
   );
 }
 
-export function ScenarioAnalytics() {
-  const overviewQuery = api.analytics.overview.useQuery();
+export function ScenarioAnalytics({
+  variant = "org",
+}: {
+  /** `site` shows org column + optional organization filter for Site Admins. */
+  variant?: "org" | "site";
+}) {
+  const isSite = variant === "site";
+  const [organizationId, setOrganizationId] = useState<string>("");
   const [selectedScenarioId, setSelectedScenarioId] = useState<string>("");
+
+  const orgsQuery = api.siteAdmin.listOrganizations.useQuery(undefined, {
+    enabled: isSite,
+  });
+  const overviewQuery = api.analytics.overview.useQuery(
+    isSite && organizationId
+      ? { organizationId }
+      : isSite
+        ? {}
+        : undefined,
+  );
 
   if (overviewQuery.isLoading) {
     return <p className="text-sm text-slate-500">Loading analytics…</p>;
@@ -407,26 +424,51 @@ export function ScenarioAnalytics() {
 
   if (scenarios.length === 0) {
     return (
-      <Card className="gap-0 py-0 ring-1 ring-slate-200">
-        <CardContent className="py-8 text-center">
-          <p className="text-sm text-slate-600">
-            No scenarios in your organization yet.
-          </p>
-          <p className="mt-1 text-xs text-slate-500">
-            Create a scenario and share a join code to start collecting results.
-          </p>
-        </CardContent>
-      </Card>
+      <div className="space-y-4">
+        {isSite ? (
+          <OrgFilter
+            organizationId={organizationId}
+            onChange={(value) => {
+              setOrganizationId(value);
+              setSelectedScenarioId("");
+            }}
+            orgs={orgsQuery.data ?? []}
+          />
+        ) : null}
+        <Card className="gap-0 py-0 ring-1 ring-slate-200">
+          <CardContent className="py-8 text-center">
+            <p className="text-sm text-slate-600">
+              {isSite
+                ? "No scenarios found for this filter."
+                : "No scenarios in your organization yet."}
+            </p>
+            <p className="mt-1 text-xs text-slate-500">
+              Create a scenario and share a join code to start collecting results.
+            </p>
+          </CardContent>
+        </Card>
+      </div>
     );
   }
 
   return (
     <div className="space-y-6">
+      {isSite ? (
+        <OrgFilter
+          organizationId={organizationId}
+          onChange={(value) => {
+            setOrganizationId(value);
+            setSelectedScenarioId("");
+          }}
+          orgs={orgsQuery.data ?? []}
+        />
+      ) : null}
+
       <div className="grid gap-3 sm:grid-cols-3">
         <StatCard
           label="Total attempts"
           value={String(overview.totals.attemptCount)}
-          hint="Across your scenarios"
+          hint={isSite ? "Across visible scenarios" : "Across your scenarios"}
         />
         <StatCard
           label="Unique participants"
@@ -434,7 +476,7 @@ export function ScenarioAnalytics() {
           hint="Anonymous aggregates only"
         />
         <StatCard
-          label="Org average score"
+          label={isSite ? "Average score" : "Org average score"}
           value={formatStars(overview.totals.averageOverallStars)}
           hint="All completed assessments"
         />
@@ -461,7 +503,10 @@ export function ScenarioAnalytics() {
             >
               {scenarios.map((scenario) => (
                 <option key={scenario.id} value={scenario.id}>
-                  {scenario.title} ({scenario.attemptCount} attempt
+                  {isSite
+                    ? `${scenario.organizationName} — ${scenario.title}`
+                    : scenario.title}{" "}
+                  ({scenario.attemptCount} attempt
                   {scenario.attemptCount === 1 ? "" : "s"})
                 </option>
               ))}
@@ -472,6 +517,9 @@ export function ScenarioAnalytics() {
             <table className="w-full min-w-[32rem] text-left text-sm">
               <thead>
                 <tr className="border-b border-slate-100 text-xs uppercase tracking-wide text-slate-500">
+                  {isSite ? (
+                    <th className="py-2 pr-3 font-medium">Organization</th>
+                  ) : null}
                   <th className="py-2 pr-3 font-medium">Scenario</th>
                   <th className="py-2 pr-3 font-medium">Status</th>
                   <th className="py-2 pr-3 font-medium">Attempts</th>
@@ -493,6 +541,11 @@ export function ScenarioAnalytics() {
                       )}
                       onClick={() => setSelectedScenarioId(scenario.id)}
                     >
+                      {isSite ? (
+                        <td className="py-2.5 pr-3 text-slate-600">
+                          {scenario.organizationName}
+                        </td>
+                      ) : null}
                       <td className="py-2.5 pr-3 font-medium text-slate-800">
                         {scenario.title}
                       </td>
@@ -529,6 +582,35 @@ export function ScenarioAnalytics() {
       {effectiveScenarioId ? (
         <ScenarioDetail scenarioId={effectiveScenarioId} />
       ) : null}
+    </div>
+  );
+}
+
+function OrgFilter({
+  organizationId,
+  onChange,
+  orgs,
+}: {
+  organizationId: string;
+  onChange: (value: string) => void;
+  orgs: { id: string; name: string }[];
+}) {
+  return (
+    <div className="space-y-2">
+      <Label htmlFor="analytics-org-filter">Organization filter</Label>
+      <select
+        id="analytics-org-filter"
+        className="flex h-9 w-full max-w-xl rounded-md border border-slate-200 bg-white px-3 py-1 text-sm text-slate-900 shadow-xs outline-none focus-visible:border-[#1e4a8c] focus-visible:ring-[3px] focus-visible:ring-[#1e4a8c]/20"
+        value={organizationId}
+        onChange={(event) => onChange(event.target.value)}
+      >
+        <option value="">All organizations</option>
+        {orgs.map((org) => (
+          <option key={org.id} value={org.id}>
+            {org.name}
+          </option>
+        ))}
+      </select>
     </div>
   );
 }

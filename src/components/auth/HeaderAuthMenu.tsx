@@ -4,6 +4,7 @@ import Link from "next/link";
 import { signOut, useSession } from "next-auth/react";
 
 import { Button } from "~/components/ui/button";
+import { isSiteAdmin } from "~/lib/roles";
 
 export function HeaderAuthMenu() {
   const { data: session, status } = useSession();
@@ -37,11 +38,15 @@ export function HeaderAuthMenu() {
     .slice(0, 2)
     .toUpperCase();
 
+  const roleLabel = isSiteAdmin(session.user.role)
+    ? "Site Admin"
+    : "Manager";
+
   return (
     <div className="ml-1 flex items-center gap-2">
       <div className="hidden text-right sm:block">
         <p className="max-w-[10rem] truncate text-xs font-medium text-slate-800">
-          {session.user.name ?? "Manager"}
+          {session.user.name ?? roleLabel}
         </p>
         <p className="max-w-[10rem] truncate text-[11px] text-slate-500">
           {session.user.email}
@@ -49,7 +54,7 @@ export function HeaderAuthMenu() {
       </div>
       <div
         className="flex size-9 shrink-0 items-center justify-center rounded-full bg-[#1e4a8c] text-sm font-semibold text-white"
-        title={session.user.email ?? undefined}
+        title={`${session.user.email ?? ""} (${roleLabel})`}
       >
         {initials}
       </div>

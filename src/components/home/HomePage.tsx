@@ -109,6 +109,9 @@ export function HomePage({ demoScenarioId }: HomePageProps) {
             <Button asChild variant="outline">
               <Link href="/admin/analytics">View analytics</Link>
             </Button>
+            <Button asChild variant="outline">
+              <Link href="/admin/site">Site Admin</Link>
+            </Button>
             <Button asChild className="bg-[#1e4a8c] hover:bg-[#1e4a8c]/90">
               <Link href="/admin/scenarios/new">Create new scenario</Link>
             </Button>

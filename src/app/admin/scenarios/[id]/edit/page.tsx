@@ -4,6 +4,7 @@ import { notFound } from "next/navigation";
 import { ScenarioBuilderForm } from "~/components/admin/ScenarioBuilderForm";
 import { ScenarioShareLink } from "~/components/admin/ScenarioShareLink";
 import { AppHeader } from "~/components/demo/AppHeader";
+import { isSiteAdmin } from "~/lib/roles";
 import { toScenarioFormValues } from "~/types/scenario";
 import { auth } from "~/server/auth";
 import { api } from "~/trpc/server";
@@ -25,7 +26,7 @@ export default async function EditScenarioPage({
     notFound();
   }
 
-  const isAdmin = session?.user.role === "admin";
+  const isAdmin = isSiteAdmin(session?.user.role);
   const sameOrg =
     Boolean(session?.user.organizationId) &&
     scenario.organizationId === session?.user.organizationId;

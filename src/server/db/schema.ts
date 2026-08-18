@@ -69,7 +69,7 @@ export const users = createTable("user", (d) => ({
   }),
   image: d.varchar({ length: 255 }),
   organizationId: d.varchar({ length: 255 }).references(() => organizations.id),
-  /** manager = create/edit scenarios; admin = same for MVP (roles reserved for later) */
+  /** manager = org-scoped scenarios; admin = Site Admin (platform-wide) */
   role: d.varchar({ length: 32 }).notNull().default("manager"),
   /** Only used by local/dev Credentials login — not used for Cognito. */
   passwordHash: d.text(),
