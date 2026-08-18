@@ -188,6 +188,12 @@ export const personas = createTable(
     initials: d.varchar({ length: 8 }).notNull(),
     avatarColor: d.varchar({ length: 64 }).notNull(),
     imagePath: d.varchar({ length: 512 }),
+    /** Structured worker perspective fields used for UI tags and evaluation. */
+    experienceLevel: d.varchar({ length: 32 }),
+    jobRole: d.varchar({ length: 32 }),
+    jobRoleOther: d.varchar({ length: 128 }),
+    englishLiteracy: d.varchar({ length: 32 }),
+    projectExperience: d.varchar({ length: 32 }),
     createdAt: d
       .timestamp({ withTimezone: true })
       .$defaultFn(() => /* @__PURE__ */ new Date())

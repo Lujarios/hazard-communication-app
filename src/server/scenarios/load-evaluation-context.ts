@@ -13,6 +13,11 @@ export type EvaluationPersona = {
   name: string;
   description: string;
   evaluationInstructions: string;
+  experienceLevel: string | null;
+  jobRole: string | null;
+  jobRoleOther: string | null;
+  englishLiteracy: string | null;
+  projectExperience: string | null;
 };
 
 export type ScenarioEvaluationContext = {
@@ -60,6 +65,11 @@ export async function loadScenarioEvaluationContext(
       name: persona.name,
       description: persona.roleDescription,
       evaluationInstructions: persona.evaluationInstructions,
+      experienceLevel: persona.experienceLevel,
+      jobRole: persona.jobRole,
+      jobRoleOther: persona.jobRoleOther,
+      englishLiteracy: persona.englishLiteracy,
+      projectExperience: persona.projectExperience,
     })),
   };
 }

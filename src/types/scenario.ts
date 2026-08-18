@@ -32,6 +32,15 @@ export const initialScenarioFormValues = (): ScenarioFormValues => ({
   personaIds: [],
 });
 
+type AssignedPersona = {
+  id: string;
+};
+
+type ScenarioPersonaEntry = {
+  personaId?: string;
+  persona?: AssignedPersona | null;
+};
+
 type DbScenarioForForm = {
   title: string;
   description: string;
@@ -43,10 +52,30 @@ type DbScenarioForForm = {
     controlDescription: string;
     locationNote: string | null;
   }>;
-  scenarioPersonas: Array<
-    { personaId: string } | { persona: { id: string } }
-  >;
+  scenarioPersonas: ScenarioPersonaEntry[];
 };
+
+export function getScenarioPersonaId(
+  entry: ScenarioPersonaEntry,
+): string | undefined {
+  if (entry.persona?.id) {
+    return entry.persona.id;
+  }
+
+  if (entry.personaId && entry.personaId.length > 0) {
+    return entry.personaId;
+  }
+
+  return undefined;
+}
+
+export function toAssignedPersonas<T extends AssignedPersona>(
+  scenario: { scenarioPersonas: Array<{ persona?: T | null }> },
+): T[] {
+  return scenario.scenarioPersonas
+    .map((entry) => entry.persona)
+    .filter((persona): persona is T => Boolean(persona));
+}
 
 export function toScenarioFormValues(
   scenario: DbScenarioForForm,
@@ -65,8 +94,8 @@ export function toScenarioFormValues(
             locationNote: hazard.locationNote ?? "",
           }))
         : [emptyHazardEntry()],
-    personaIds: scenario.scenarioPersonas.map((entry) =>
-      "personaId" in entry ? entry.personaId : entry.persona.id,
-    ),
+    personaIds: scenario.scenarioPersonas
+      .map((entry) => getScenarioPersonaId(entry))
+      .filter((personaId): personaId is string => Boolean(personaId)),
   };
 }

@@ -1,7 +1,7 @@
 "use client";
 
 import { Plus } from "lucide-react";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { z } from "zod";
 
 import { HazardEntryEditor } from "~/components/admin/HazardEntryEditor";
@@ -25,6 +25,7 @@ import {
   type HazardFormEntry,
   type ScenarioFormValues,
 } from "~/types/scenario";
+import { mergePersonaRecords, type PersonaRecord } from "~/types/persona";
 import { api } from "~/trpc/react";
 
 const hazardValidationSchema = z.object({
@@ -86,16 +87,23 @@ function mapZodErrors(error: z.ZodError): FormErrors {
 type ScenarioBuilderFormProps = {
   mode?: "create" | "edit";
   scenarioId?: string;
+  organizationId?: string | null;
   initialValues?: ScenarioFormValues;
+  initialPersonas?: PersonaRecord[];
 };
 
 export function ScenarioBuilderForm({
   mode = "create",
   scenarioId,
+  organizationId,
   initialValues,
+  initialPersonas,
 }: ScenarioBuilderFormProps) {
   const [formValues, setFormValues] = useState<ScenarioFormValues>(
     initialValues ?? initialScenarioFormValues(),
+  );
+  const [catalogExtras, setCatalogExtras] = useState<PersonaRecord[]>(
+    initialPersonas ?? [],
   );
   const [errors, setErrors] = useState<FormErrors>({});
   const [savedScenario, setSavedScenario] = useState<{
@@ -103,7 +111,18 @@ export function ScenarioBuilderForm({
     title: string;
   } | null>(null);
 
-  const personasQuery = api.scenario.listPersonas.useQuery();
+  const personasQuery = api.scenario.listPersonas.useQuery({
+    organizationId: organizationId ?? undefined,
+  });
+  const personas = useMemo(
+    () => mergePersonaRecords(personasQuery.data, catalogExtras),
+    [personasQuery.data, catalogExtras],
+  );
+
+  const rememberPersona = (persona: PersonaRecord) => {
+    setCatalogExtras((current) => mergePersonaRecords(current, [persona]));
+  };
+
   const createScenario = api.scenario.create.useMutation({
     onSuccess: (scenario) => {
       setSavedScenario({ id: scenario.id, title: scenario.title });
@@ -198,11 +217,11 @@ export function ScenarioBuilderForm({
           variant="outline"
           onClick={() => {
             setSavedScenario(null);
-            if (mode === "edit" && initialValues) {
-              setFormValues(initialValues);
+            if (mode === "edit") {
               return;
             }
             setFormValues(initialScenarioFormValues());
+            setCatalogExtras([]);
           }}
         >
           {mode === "edit" ? "Edit again" : "Create another scenario"}
@@ -315,10 +334,12 @@ export function ScenarioBuilderForm({
         </CardHeader>
         <CardContent className="py-4">
           <PersonaSelector
-            personas={personasQuery.data ?? []}
+            personas={personas}
             selectedIds={formValues.personaIds}
+            organizationId={organizationId}
             onChange={(personaIds) => updateForm({ personaIds })}
-            onPersonaCreated={() => {
+            onPersonaSaved={(persona) => {
+              rememberPersona(persona);
               void personasQuery.refetch();
             }}
             error={errors.personaIds}

@@ -5,7 +5,7 @@ import { ScenarioBuilderForm } from "~/components/admin/ScenarioBuilderForm";
 import { ScenarioShareLink } from "~/components/admin/ScenarioShareLink";
 import { AppHeader } from "~/components/demo/AppHeader";
 import { isSiteAdmin } from "~/lib/roles";
-import { toScenarioFormValues } from "~/types/scenario";
+import { toAssignedPersonas, toScenarioFormValues } from "~/types/scenario";
 import { auth } from "~/server/auth";
 import { api } from "~/trpc/server";
 
@@ -69,7 +69,9 @@ export default async function EditScenarioPage({
         <ScenarioBuilderForm
           mode="edit"
           scenarioId={scenario.id}
+          organizationId={scenario.organizationId}
           initialValues={toScenarioFormValues(scenario)}
+          initialPersonas={toAssignedPersonas(scenario)}
         />
       </main>
     </div>

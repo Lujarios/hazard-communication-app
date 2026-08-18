@@ -3,7 +3,8 @@
  * tables were created earlier via `db:push`.
  *
  * Includes auth/org columns introduced for Cognito manager login,
- * org-scoped custom persona columns, and anonymous assessment attempts.
+ * org-scoped custom persona columns, persona characteristic fields,
+ * and anonymous assessment attempts.
  */
 import postgres from "postgres";
 
@@ -56,6 +57,11 @@ END $$`,
   `CREATE INDEX IF NOT EXISTS "assessment_attempt_scenario_idx" ON "hazard-communication-app_assessment_attempt" USING btree ("scenarioId")`,
   `CREATE INDEX IF NOT EXISTS "assessment_attempt_session_idx" ON "hazard-communication-app_assessment_attempt" USING btree ("assessmentSessionId")`,
   `CREATE INDEX IF NOT EXISTS "assessment_attempt_participant_scenario_idx" ON "hazard-communication-app_assessment_attempt" USING btree ("anonymousParticipantId","scenarioId")`,
+  `ALTER TABLE "hazard-communication-app_persona" ADD COLUMN IF NOT EXISTS "experienceLevel" varchar(32)`,
+  `ALTER TABLE "hazard-communication-app_persona" ADD COLUMN IF NOT EXISTS "jobRole" varchar(32)`,
+  `ALTER TABLE "hazard-communication-app_persona" ADD COLUMN IF NOT EXISTS "jobRoleOther" varchar(128)`,
+  `ALTER TABLE "hazard-communication-app_persona" ADD COLUMN IF NOT EXISTS "englishLiteracy" varchar(32)`,
+  `ALTER TABLE "hazard-communication-app_persona" ADD COLUMN IF NOT EXISTS "projectExperience" varchar(32)`,
 ];
 
 try {

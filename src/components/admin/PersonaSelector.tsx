@@ -1,9 +1,10 @@
 "use client";
 
-import { Check, Plus } from "lucide-react";
+import { Check, Pencil, Plus } from "lucide-react";
 import { useState } from "react";
 
 import { CreatePersonaForm } from "~/components/admin/CreatePersonaForm";
+import { PersonaCharacteristicTags } from "~/components/admin/PersonaCharacteristicTags";
 import { Avatar, AvatarFallback } from "~/components/ui/avatar";
 import { Badge } from "~/components/ui/badge";
 import { Button } from "~/components/ui/button";
@@ -13,8 +14,9 @@ import { cn } from "~/lib/utils";
 type PersonaSelectorProps = {
   personas: PersonaRecord[];
   selectedIds: string[];
+  organizationId?: string | null;
   onChange: (selectedIds: string[]) => void;
-  onPersonaCreated?: (persona: PersonaRecord) => void;
+  onPersonaSaved?: (persona: PersonaRecord) => void;
   error?: string;
   isLoading?: boolean;
 };
@@ -23,16 +25,15 @@ function PersonaCard({
   persona,
   isSelected,
   onToggle,
+  onEdit,
 }: {
   persona: PersonaRecord;
   isSelected: boolean;
   onToggle: () => void;
+  onEdit?: () => void;
 }) {
   return (
-    <button
-      type="button"
-      aria-pressed={isSelected}
-      onClick={onToggle}
+    <div
       className={cn(
         "flex w-full items-start gap-3 rounded-xl border px-3 py-3 text-left transition-colors",
         isSelected
@@ -40,57 +41,92 @@ function PersonaCard({
           : "border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50",
       )}
     >
-      <Avatar size="lg" className="shrink-0">
-        <AvatarFallback
-          className={cn("text-xs font-semibold", persona.avatarColor)}
-        >
-          {persona.initials}
-        </AvatarFallback>
-      </Avatar>
+      <button
+        type="button"
+        aria-pressed={isSelected}
+        onClick={onToggle}
+        className="flex min-w-0 flex-1 items-start gap-3 text-left"
+      >
+        <Avatar size="lg" className="shrink-0">
+          <AvatarFallback
+            className={cn("text-xs font-semibold", persona.avatarColor)}
+          >
+            {persona.initials}
+          </AvatarFallback>
+        </Avatar>
 
-      <div className="min-w-0 flex-1">
-        <div className="flex items-start justify-between gap-2">
-          <div className="min-w-0">
-            <div className="flex flex-wrap items-center gap-1.5">
-              <p className="text-sm font-semibold text-slate-800">
-                {persona.name}
-              </p>
-              {persona.isCustom ? (
-                <Badge
-                  variant="secondary"
-                  className="px-1.5 py-0 text-[10px] font-medium"
-                >
-                  Custom
-                </Badge>
-              ) : null}
+        <div className="min-w-0 flex-1">
+          <div className="flex items-start justify-between gap-2">
+            <div className="min-w-0">
+              <div className="flex flex-wrap items-center gap-1.5">
+                <p className="text-sm font-semibold text-slate-800">
+                  {persona.name}
+                </p>
+                {persona.isCustom ? (
+                  <Badge
+                    variant="secondary"
+                    className="px-1.5 py-0 text-[10px] font-medium"
+                  >
+                    Custom
+                  </Badge>
+                ) : null}
+              </div>
             </div>
-          </div>
-          {isSelected ? (
-            <span className="inline-flex size-5 shrink-0 items-center justify-center rounded-full bg-[#1e4a8c] text-white">
-              <Check className="size-3" aria-hidden />
+            <span
+              className={cn(
+                "inline-flex size-5 shrink-0 items-center justify-center rounded-full border",
+                isSelected
+                  ? "border-[#1e4a8c] bg-[#1e4a8c] text-white"
+                  : "border-slate-300 bg-white text-transparent",
+              )}
+              aria-hidden
+            >
+              <Check className="size-3" />
             </span>
-          ) : null}
+          </div>
+          <p className="mt-0.5 line-clamp-2 text-xs text-slate-500">
+            {persona.roleDescription}
+          </p>
+          <PersonaCharacteristicTags persona={persona} />
         </div>
-        <p className="mt-0.5 text-xs text-slate-500">
-          {persona.roleDescription}
-        </p>
-      </div>
-    </button>
+      </button>
+
+      {onEdit ? (
+        <Button
+          type="button"
+          variant="ghost"
+          size="icon-sm"
+          className="shrink-0 text-slate-500 hover:text-slate-800"
+          onClick={onEdit}
+          aria-label={`Edit ${persona.name}`}
+        >
+          <Pencil className="size-3.5" aria-hidden />
+        </Button>
+      ) : null}
+    </div>
   );
 }
 
 export function PersonaSelector({
   personas,
   selectedIds,
+  organizationId,
   onChange,
-  onPersonaCreated,
+  onPersonaSaved,
   error,
   isLoading = false,
 }: PersonaSelectorProps) {
   const [isCreating, setIsCreating] = useState(false);
+  const [editingPersona, setEditingPersona] = useState<PersonaRecord | null>(
+    null,
+  );
 
   const premadePersonas = personas.filter((persona) => !persona.isCustom);
   const customPersonas = personas.filter((persona) => persona.isCustom);
+  const visibleCustomPersonas = customPersonas.filter(
+    (persona) => persona.id !== editingPersona?.id,
+  );
+  const selectedCount = selectedIds.length;
 
   const togglePersona = (personaId: string) => {
     if (selectedIds.includes(personaId)) {
@@ -109,6 +145,11 @@ export function PersonaSelector({
 
   return (
     <div className="space-y-4">
+      <p className="text-xs text-slate-500">
+        {selectedCount} selected. Selected personas are highlighted and marked
+        with a check.
+      </p>
+
       <div className="space-y-2">
         <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
           Premade
@@ -130,7 +171,7 @@ export function PersonaSelector({
           <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
             Custom
           </p>
-          {!isCreating ? (
+          {!isCreating && !editingPersona ? (
             <Button
               type="button"
               variant="outline"
@@ -145,9 +186,10 @@ export function PersonaSelector({
 
         {isCreating ? (
           <CreatePersonaForm
-            onCreated={(persona) => {
+            organizationId={organizationId}
+            onSaved={(persona) => {
               setIsCreating(false);
-              onPersonaCreated?.(persona);
+              onPersonaSaved?.(persona);
               if (!selectedIds.includes(persona.id)) {
                 onChange([...selectedIds, persona.id]);
               }
@@ -156,18 +198,34 @@ export function PersonaSelector({
           />
         ) : null}
 
-        {customPersonas.length > 0 ? (
+        {editingPersona ? (
+          <CreatePersonaForm
+            persona={editingPersona}
+            organizationId={organizationId}
+            onSaved={(persona) => {
+              setEditingPersona(null);
+              onPersonaSaved?.(persona);
+            }}
+            onCancel={() => setEditingPersona(null)}
+          />
+        ) : null}
+
+        {visibleCustomPersonas.length > 0 ? (
           <div className="grid gap-3 sm:grid-cols-2">
-            {customPersonas.map((persona) => (
+            {visibleCustomPersonas.map((persona) => (
               <PersonaCard
                 key={persona.id}
                 persona={persona}
                 isSelected={selectedIds.includes(persona.id)}
                 onToggle={() => togglePersona(persona.id)}
+                onEdit={() => {
+                  setIsCreating(false);
+                  setEditingPersona(persona);
+                }}
               />
             ))}
           </div>
-        ) : !isCreating ? (
+        ) : !isCreating && !editingPersona ? (
           <p className="text-xs text-slate-500">
             No custom personas yet. Create one tailored to your crew or jobsite.
           </p>

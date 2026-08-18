@@ -21,6 +21,11 @@ type DbScenarioWithRelations = {
       roleDescription: string;
       initials: string;
       avatarColor: string;
+      experienceLevel: string | null;
+      jobRole: string | null;
+      jobRoleOther: string | null;
+      englishLiteracy: string | null;
+      projectExperience: string | null;
     };
   }>;
 };
@@ -65,6 +70,11 @@ export function toAssessmentScenario(
       description: persona.roleDescription,
       initials: persona.initials,
       avatarColor: persona.avatarColor,
+      experienceLevel: persona.experienceLevel,
+      jobRole: persona.jobRole,
+      jobRoleOther: persona.jobRoleOther,
+      englishLiteracy: persona.englishLiteracy,
+      projectExperience: persona.projectExperience,
     })),
     hazardLabels: buildHazardLabels(dbScenario.hazards),
   };

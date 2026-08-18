@@ -18,7 +18,11 @@ import {
 import { ensureAppSeeded } from "~/server/db/seed-construction-demo";
 import { ensurePersonasSeeded } from "~/server/db/seed-personas";
 import {
+  ENGLISH_LITERACY_VALUES,
+  EXPERIENCE_LEVEL_VALUES,
+  JOB_ROLE_VALUES,
   PERSONA_AVATAR_COLORS,
+  PROJECT_EXPERIENCE_VALUES,
   derivePersonaInitials,
 } from "~/types/persona";
 
@@ -56,7 +60,7 @@ const avatarColorValues = PERSONA_AVATAR_COLORS.map((color) => color.value) as [
   ...(typeof PERSONA_AVATAR_COLORS)[number]["value"][],
 ];
 
-const createPersonaInputSchema = z.object({
+const personaWritableSchema = z.object({
   name: z.string().trim().min(1, "Persona name is required").max(256),
   roleDescription: z
     .string()
@@ -73,7 +77,55 @@ const createPersonaInputSchema = z.object({
     .optional()
     .transform((value) => (value && value.length > 0 ? value : undefined)),
   avatarColor: z.enum(avatarColorValues).optional(),
+  experienceLevel: z.enum(EXPERIENCE_LEVEL_VALUES),
+  jobRole: z.enum(JOB_ROLE_VALUES),
+  jobRoleOther: z
+    .string()
+    .trim()
+    .max(128)
+    .optional()
+    .transform((value) => (value && value.length > 0 ? value : undefined)),
+  englishLiteracy: z.enum(ENGLISH_LITERACY_VALUES),
+  projectExperience: z.enum(PROJECT_EXPERIENCE_VALUES),
 });
+
+function refineJobRoleOther(
+  value: { jobRole: string; jobRoleOther?: string },
+  ctx: z.RefinementCtx,
+) {
+  if (value.jobRole === "other" && !value.jobRoleOther) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: "Enter a job / role",
+      path: ["jobRoleOther"],
+    });
+  }
+}
+
+const createPersonaInputSchema = personaWritableSchema
+  .extend({
+    organizationId: z.string().min(1).optional(),
+  })
+  .superRefine(refineJobRoleOther);
+
+const updatePersonaInputSchema = personaWritableSchema
+  .extend({
+    id: z.string().min(1),
+  })
+  .superRefine(refineJobRoleOther);
+
+function personaCharacteristicValues(
+  input: z.infer<typeof createPersonaInputSchema> | z.infer<typeof updatePersonaInputSchema>,
+) {
+  return {
+    experienceLevel: input.experienceLevel,
+    jobRole: input.jobRole,
+    jobRoleOther:
+      input.jobRole === "other" ? (input.jobRoleOther ?? null) : null,
+    englishLiteracy: input.englishLiteracy,
+    projectExperience: input.projectExperience,
+  };
+}
 
 function requireOrganizationId(organizationId: string | null | undefined) {
   if (!organizationId) {
@@ -188,19 +240,27 @@ export const scenarioRouter = createTRPCRouter({
     });
   }),
 
-  listPersonas: protectedProcedure.query(async ({ ctx }) => {
-    await ensurePersonasSeeded();
+  listPersonas: protectedProcedure
+    .input(
+      z
+        .object({
+          organizationId: z.string().min(1).optional(),
+        })
+        .optional(),
+    )
+    .query(async ({ ctx, input }) => {
+      await ensurePersonasSeeded();
 
-    const organizationId = ctx.session.user.organizationId ?? null;
+      const admin = isSiteAdmin(ctx.session.user.role);
+      const organizationId = admin
+        ? (input?.organizationId ?? ctx.session.user.organizationId ?? null)
+        : (ctx.session.user.organizationId ?? null);
 
-    return ctx.db.query.personas.findMany({
-      where: personasAvailableToOrganization(organizationId),
-      orderBy: [
-        asc(personas.isCustom),
-        asc(personas.name),
-      ],
-    });
-  }),
+      return ctx.db.query.personas.findMany({
+        where: personasAvailableToOrganization(organizationId),
+        orderBy: [asc(personas.isCustom), asc(personas.name)],
+      });
+    }),
 
   /**
    * Create an org-scoped custom persona for use in scenario building.
@@ -209,14 +269,17 @@ export const scenarioRouter = createTRPCRouter({
   createPersona: protectedProcedure
     .input(createPersonaInputSchema)
     .mutation(async ({ ctx, input }) => {
+      const admin = isSiteAdmin(ctx.session.user.role);
       const organizationId = requireOrganizationId(
-        ctx.session.user.organizationId,
+        admin
+          ? (input.organizationId ?? ctx.session.user.organizationId)
+          : ctx.session.user.organizationId,
       );
 
       const initials =
         input.initials?.toUpperCase() ?? derivePersonaInitials(input.name);
       const avatarColor =
-        input.avatarColor ?? PERSONA_AVATAR_COLORS[0]!.value;
+        input.avatarColor ?? PERSONA_AVATAR_COLORS[0].value;
 
       const [createdPersona] = await ctx.db
         .insert(personas)
@@ -230,6 +293,7 @@ export const scenarioRouter = createTRPCRouter({
           initials,
           avatarColor,
           imagePath: null,
+          ...personaCharacteristicValues(input),
         })
         .returning();
 
@@ -241,6 +305,67 @@ export const scenarioRouter = createTRPCRouter({
       }
 
       return createdPersona;
+    }),
+
+  /** Update an org-scoped custom persona. Premade catalog personas stay read-only. */
+  updatePersona: protectedProcedure
+    .input(updatePersonaInputSchema)
+    .mutation(async ({ ctx, input }) => {
+      const existingPersona = await ctx.db.query.personas.findFirst({
+        where: eq(personas.id, input.id),
+      });
+
+      if (!existingPersona) {
+        throw new TRPCError({
+          code: "NOT_FOUND",
+          message: "Persona not found",
+        });
+      }
+
+      if (!existingPersona.isCustom) {
+        throw new TRPCError({
+          code: "FORBIDDEN",
+          message: "Premade personas cannot be edited.",
+        });
+      }
+
+      const admin = isSiteAdmin(ctx.session.user.role);
+      if (
+        !admin &&
+        existingPersona.organizationId !== ctx.session.user.organizationId
+      ) {
+        throw new TRPCError({
+          code: "FORBIDDEN",
+          message: "You can only edit personas for your organization.",
+        });
+      }
+
+      const initials =
+        input.initials?.toUpperCase() ?? derivePersonaInitials(input.name);
+      const avatarColor =
+        input.avatarColor ?? existingPersona.avatarColor;
+
+      const [updatedPersona] = await ctx.db
+        .update(personas)
+        .set({
+          name: input.name,
+          roleDescription: input.roleDescription,
+          evaluationInstructions: input.evaluationInstructions,
+          initials,
+          avatarColor,
+          ...personaCharacteristicValues(input),
+        })
+        .where(eq(personas.id, input.id))
+        .returning();
+
+      if (!updatedPersona) {
+        throw new TRPCError({
+          code: "INTERNAL_SERVER_ERROR",
+          message: "Failed to update persona",
+        });
+      }
+
+      return updatedPersona;
     }),
 
   /** Public: assessment takers open scenarios by share link without login. */

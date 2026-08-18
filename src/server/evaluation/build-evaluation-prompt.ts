@@ -4,6 +4,7 @@ import {
   type ScenarioAnswerKey,
 } from "~/lib/scenario-answer-keys";
 import type { EvaluationPersona } from "~/server/scenarios/load-evaluation-context";
+import { formatPersonaCharacteristicsForPrompt } from "~/types/persona";
 
 export type EvaluationPromptInput = {
   transcript: string;
@@ -18,10 +19,18 @@ export type EvaluationPromptMessages = {
 
 function formatPersonasForPrompt(personas: EvaluationPersona[]): string {
   return personas
-    .map(
-      (persona) =>
-        `- ${persona.name} (id: ${persona.id}): ${persona.description}. ${persona.evaluationInstructions}`,
-    )
+    .map((persona) => {
+      const characteristics = formatPersonaCharacteristicsForPrompt(persona);
+      const header = characteristics
+        ? `- ${persona.name} (id: ${persona.id}): ${characteristics}`
+        : `- ${persona.name} (id: ${persona.id})`;
+
+      return [
+        header,
+        `  Role: ${persona.description}`,
+        `  Evaluation instructions: ${persona.evaluationInstructions}`,
+      ].join("\n");
+    })
     .join("\n");
 }
 
@@ -43,8 +52,13 @@ export function buildEvaluationPrompt({
     "- Set relatedHazardId when a missed item maps to a scenario hazard id.",
     "- Emphasize life-threatening hazards (falls, suspended loads) when scoring life-threatening-emphasis.",
     "- Provide personaFeedback with exactly one entry for every worker persona id listed below.",
-    "- Write each reaction in 1–2 sentences from that persona's perspective (experience level, language, literacy, or supervisor role).",
-    "- Set understood to true only if the talk was clear enough for that persona; use simpler wording in reactions for new hires, limited-English, and low-literacy personas when the talk was unclear.",
+    "- Write each reaction in 1–2 sentences from that persona's perspective, using their job role, experience level, English literacy, and project experience.",
+    "- Set understood to true only if the talk was clear enough for that persona; use simpler wording in reactions for entry-level, limited-English, and developing-literacy personas when the talk was unclear.",
+    "- Persona questions: most personas must set question to null. Across ALL personas combined, include at most TWO questions, and prefer ONE when there is a single important gap.",
+    "- Do not give each persona a unique question. The trainee must not be flooded with follow-ups.",
+    "- If missedItems is empty or the talk covered the key hazards and controls, set every question to null.",
+    "- A question is only allowed when that persona would realistically be confused or at risk because of a specific missed item. Prefer the persona whose characteristics make the gap most relevant (for example a new hire or limited-English worker asking for a simpler missing control, or a supervisor asking about a missing lift plan or accountability step).",
+    "- When question is not null, it must be one short in-character question that points the trainee to a concrete missed hazard, control, or procedure from missedItems.",
     "- Do not invent hazards that are not supported by the scenario answer key.",
     "",
     "## Rubric criteria",

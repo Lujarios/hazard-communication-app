@@ -52,6 +52,8 @@ export function createSafetyTalkEvaluationResponseSchema(
     personaId: workerPersonaIdSchema,
     reaction: z.string().min(1),
     understood: z.boolean(),
+    /** Null when this persona does not need to ask a follow-up question. */
+    question: z.string().nullable(),
   });
 
   return z.object({
@@ -119,12 +121,14 @@ export function toSafetyTalkFeedback(
     );
   }
 
-  const personaFeedback: PersonaFeedback[] = response.personaFeedback.map(
-    (item) => ({
+  const personaFeedback: PersonaFeedback[] = limitPersonaQuestions(
+    response.personaFeedback.map((item) => ({
       personaId: item.personaId,
       reaction: item.reaction,
       understood: item.understood,
-    }),
+      question: normalizePersonaQuestion(item.question),
+    })),
+    missedItems,
   );
 
   return {
@@ -134,4 +138,37 @@ export function toSafetyTalkFeedback(
     overallStars: computeOverallStars(criteriaRatings),
     personaFeedback,
   };
+}
+
+const MAX_PERSONA_QUESTIONS = 2;
+
+function normalizePersonaQuestion(question: string | null | undefined): string | null {
+  const trimmed = question?.trim();
+  return trimmed && trimmed.length > 0 ? trimmed : null;
+}
+
+/**
+ * Keep the trainee from being flooded: at most two questions, and none
+ * when the talk did not miss anything material.
+ */
+function limitPersonaQuestions(
+  personaFeedback: PersonaFeedback[],
+  missedItems: MissedItem[],
+): PersonaFeedback[] {
+  if (missedItems.length === 0) {
+    return personaFeedback.map((entry) => ({ ...entry, question: null }));
+  }
+
+  const keepIds = new Set(
+    [...personaFeedback]
+      .filter((entry) => entry.question)
+      .sort((left, right) => Number(left.understood) - Number(right.understood))
+      .slice(0, MAX_PERSONA_QUESTIONS)
+      .map((entry) => entry.personaId),
+  );
+
+  return personaFeedback.map((entry) => ({
+    ...entry,
+    question: keepIds.has(entry.personaId) ? entry.question : null,
+  }));
 }

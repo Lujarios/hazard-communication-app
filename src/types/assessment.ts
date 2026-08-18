@@ -1,4 +1,5 @@
 import type { HazardLabel } from "~/lib/demo-data";
+import type { PersonaCharacteristicFields } from "~/types/persona";
 
 export type AssessmentPersona = {
   id: string;
@@ -6,7 +7,7 @@ export type AssessmentPersona = {
   description: string;
   initials: string;
   avatarColor: string;
-};
+} & PersonaCharacteristicFields;
 
 export type AssessmentScenario = {
   id: string;

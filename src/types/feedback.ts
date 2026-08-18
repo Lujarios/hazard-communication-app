@@ -44,6 +44,11 @@ export type PersonaFeedback = {
   personaId: string;
   reaction: string;
   understood: boolean;
+  /**
+   * Optional in-character question pointing at a missed hazard/control.
+   * Most personas should leave this null; at most one or two should ask.
+   */
+  question?: string | null;
 };
 
 export type SafetyTalkFeedback = {

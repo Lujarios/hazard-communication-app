@@ -2,8 +2,11 @@ import Link from "next/link";
 
 import { ScenarioBuilderForm } from "~/components/admin/ScenarioBuilderForm";
 import { AppHeader } from "~/components/demo/AppHeader";
+import { auth } from "~/server/auth";
 
-export default function NewScenarioPage() {
+export default async function NewScenarioPage() {
+  const session = await auth();
+
   return (
     <div className="min-h-screen bg-slate-50">
       <AppHeader />
@@ -25,7 +28,9 @@ export default function NewScenarioPage() {
           </p>
         </div>
 
-        <ScenarioBuilderForm />
+        <ScenarioBuilderForm
+          organizationId={session?.user.organizationId}
+        />
       </main>
     </div>
   );

@@ -50,7 +50,7 @@ export const SPOTLIGHT_STEPS: SpotlightStep[] = [
     body: "Five AI worker personas stand in for your crew — experienced workers, new hires, and teammates with different communication needs.",
     target: "personas",
     howToUse:
-      "While you talk they show as listening. After you request feedback, each persona reacts to whether your message was clear to them.",
+      "While you talk they show as listening. After feedback, click a worker to see their details. A yellow question mark means that worker has a follow-up about something you missed.",
   },
   {
     id: "scorecard",
