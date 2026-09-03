@@ -6,7 +6,7 @@ import { api } from "~/trpc/server";
 
 type AssessmentPageProps = {
   params: Promise<{ scenarioId: string }>;
-  searchParams: Promise<{ session?: string }>;
+  searchParams: Promise<{ session?: string; new?: string }>;
 };
 
 export default async function AssessmentScenarioPage({
@@ -14,7 +14,7 @@ export default async function AssessmentScenarioPage({
   searchParams,
 }: AssessmentPageProps) {
   const { scenarioId } = await params;
-  const { session: rawSessionId } = await searchParams;
+  const { session: rawSessionId, new: rawStartNew } = await searchParams;
   const assessmentSessionId =
     rawSessionId &&
     /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
@@ -22,6 +22,7 @@ export default async function AssessmentScenarioPage({
     )
       ? rawSessionId
       : undefined;
+  const startNew = rawStartNew === "1" || rawStartNew === "true";
 
   let scenario;
   try {
@@ -34,6 +35,7 @@ export default async function AssessmentScenarioPage({
     <AssessmentExperience
       scenario={toAssessmentScenario(scenario)}
       assessmentSessionId={assessmentSessionId}
+      startNew={startNew}
     />
   );
 }

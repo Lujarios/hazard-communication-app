@@ -13,6 +13,7 @@ import {
   toSafetyTalkFeedback,
 } from "~/server/evaluation/feedback-schema";
 import type { EvaluationPersona } from "~/server/scenarios/load-evaluation-context";
+import type { ConversationSegment } from "~/types/assessment-run";
 
 const EVALUATION_MODEL = "gpt-4o-mini";
 
@@ -27,6 +28,8 @@ export type EvaluateSafetyTalkInput = {
   transcript: string;
   answerKey: ScenarioAnswerKey;
   personas: EvaluationPersona[];
+  conversation?: ConversationSegment[];
+  followUpBudget?: 0 | 1 | 2;
 };
 
 export class SafetyTalkEvaluationError extends Error {
@@ -43,6 +46,8 @@ export async function evaluateSafetyTalk({
   transcript,
   answerKey,
   personas,
+  conversation,
+  followUpBudget,
 }: EvaluateSafetyTalkInput): Promise<SafetyTalkFeedback> {
   const trimmedTranscript = transcript.trim();
 
@@ -66,6 +71,8 @@ export async function evaluateSafetyTalk({
     transcript: trimmedTranscript,
     answerKey,
     personas,
+    conversation,
+    followUpBudget,
   });
 
   try {

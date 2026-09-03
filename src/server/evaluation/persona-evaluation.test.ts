@@ -107,13 +107,68 @@ describe("buildEvaluationPrompt", () => {
     assert.ok(system.includes("Objective scenario performance"));
     assert.ok(system.includes("Persona-specific communication"));
     assert.ok(system.includes("Do not make personas randomly disagree"));
+    assert.ok(system.includes("evaluate the CUMULATIVE record"));
     assert.ok(system.includes("personaEvaluations"));
     assert.ok(system.includes("id: new-hire"));
     assert.ok(system.includes("id: limited-english"));
     assert.ok(system.includes("id: foreman"));
     assert.ok(system.includes("How this worker interprets the talk"));
     assert.equal(system.includes("at most TWO questions"), false);
+    assert.ok(system.includes("Do not generate overlapping questions across personas"));
+    assert.ok(system.includes("Judge each previously asked worker question on its own"));
     assert.ok(user.includes("Stay out from under the crane"));
     assert.ok(user.includes("suspended-load"));
+  });
+
+  it("scores labeled conversation history instead of only the newest reply", () => {
+    const { system, user } = buildEvaluationPrompt({
+      transcript:
+        "Stay out from under the crane while we make this lift.\n\nNobody walks through the barricaded path.",
+      answerKey,
+      personas: [newHire],
+      conversation: [
+        {
+          stageType: "initial",
+          segmentTranscript: "Stay out from under the crane while we make this lift.",
+          answeringQuestions: undefined,
+        },
+        {
+          stageType: "clarification_1",
+          segmentTranscript: "Nobody walks through the barricaded path.",
+          answeringQuestions: [
+            {
+              personaId: "new-hire",
+              personaName: "New Hire",
+              question: "Where should I stand while the lift is operating?",
+              reason: "Location missing",
+              relatedHazardId: "suspended-load",
+              mergedFromPersonaIds: [],
+            },
+          ],
+        },
+      ],
+    });
+
+    assert.ok(system.includes("Do not penalize the speaker for not repeating"));
+    assert.ok(user.includes("### Initial safety talk"));
+    assert.ok(user.includes("### Worker questions (clarification 1)"));
+    assert.ok(user.includes("Nobody walks through the barricaded path."));
+    assert.ok(
+      system.includes(
+        "Do not ask for information the trainee already clearly provided",
+      ),
+    );
+  });
+
+  it("forbids new questions after the final clarification", () => {
+    const { system } = buildEvaluationPrompt({
+      transcript: "Stay clear of the load.",
+      answerKey,
+      personas: [newHire],
+      followUpBudget: 0,
+    });
+
+    assert.ok(system.includes("Do NOT invent new follow-up questions"));
+    assert.ok(system.includes("empty followUpQuestionCandidates arrays"));
   });
 });

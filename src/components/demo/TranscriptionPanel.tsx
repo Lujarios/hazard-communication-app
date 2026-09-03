@@ -1,11 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import {
-  MessageSquare,
-  Mic,
-  Square,
-} from "lucide-react";
+import { MessageSquare, Mic, Square } from "lucide-react";
 
 import { Badge } from "~/components/ui/badge";
 import { Button } from "~/components/ui/button";
@@ -13,14 +9,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card";
 import { Separator } from "~/components/ui/separator";
 import { Textarea } from "~/components/ui/textarea";
 import { useSpeechRecognition } from "~/hooks/use-speech-recognition";
-import { getOrCreateAnonymousParticipantId } from "~/lib/anonymous-participant";
-// import { transcribeAudioViaAws } from "~/lib/transcription-placeholder";
 import { cn } from "~/lib/utils";
-import { api } from "~/trpc/react";
-import {
-  initialFeedbackState,
-  type FeedbackState,
-} from "~/types/feedback";
 
 function formatElapsed(seconds: number): string {
   const m = Math.floor(seconds / 60);
@@ -40,22 +29,40 @@ function SignalBars() {
   );
 }
 
+export type TranscriptionPanelMode = "initial" | "clarification" | "readonly";
+
 type TranscriptionPanelProps = {
   className?: string;
-  scenarioId: string;
-  assessmentSessionId?: string;
+  mode: TranscriptionPanelMode;
+  priorSegments?: Array<{ label: string; text: string }>;
+  initialTranscript?: string;
+  isSubmitting?: boolean;
+  submitLabel: string;
+  submittingLabel?: string;
+  title?: string;
+  placeholder?: string;
+  helperText?: string;
+  canSubmit?: boolean;
   onRecordingChange?: (isRecording: boolean) => void;
-  onFeedbackStateChange?: (state: FeedbackState) => void;
+  onSubmit: (transcript: string) => void;
 };
 
 export function TranscriptionPanel({
   className,
-  scenarioId,
-  assessmentSessionId,
+  mode,
+  priorSegments = [],
+  initialTranscript = "",
+  isSubmitting = false,
+  submitLabel,
+  submittingLabel = "Evaluating…",
+  title = "Live Transcription",
+  placeholder = "Your spoken hazard explanation will appear here. You can also type directly.",
+  helperText,
+  canSubmit = true,
   onRecordingChange,
-  onFeedbackStateChange,
+  onSubmit,
 }: TranscriptionPanelProps) {
-  const [transcript, setTranscript] = useState("");
+  const [transcript, setTranscript] = useState(initialTranscript);
   const [isRecording, setIsRecording] = useState(false);
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
 
@@ -68,38 +75,23 @@ export function TranscriptionPanel({
     stop: stopSpeech,
   } = useSpeechRecognition();
 
-  const evaluateFeedback = api.feedback.evaluate.useMutation({
-    onMutate: () => {
-      onFeedbackStateChange?.({
-        status: "loading",
-        data: null,
-        error: null,
-      });
-    },
-    onSuccess: (data) => {
-      onFeedbackStateChange?.({
-        status: "success",
-        data,
-        error: null,
-      });
-    },
-    onError: (error) => {
-      onFeedbackStateChange?.({
-        status: "error",
-        data: null,
-        error: error.message,
-      });
-    },
-  });
+  useEffect(() => {
+    setTranscript(initialTranscript);
+  }, [initialTranscript]);
 
   const displayValue =
     isListening && interimTranscript && !transcript.includes(interimTranscript)
       ? `${transcript}${transcript ? " " : ""}${interimTranscript}`
       : transcript;
 
+  const isReadonly = mode === "readonly";
   const hasTranscript = transcript.trim().length > 0;
   const canGetFeedback =
-    hasTranscript && !isRecording && !evaluateFeedback.isPending;
+    hasTranscript &&
+    !isRecording &&
+    !isSubmitting &&
+    canSubmit &&
+    !isReadonly;
 
   useEffect(() => {
     if (!isRecording) return;
@@ -123,7 +115,6 @@ export function TranscriptionPanel({
   }, []);
 
   const handleStart = () => {
-    onFeedbackStateChange?.(initialFeedbackState);
     setIsRecording(true);
     setElapsedSeconds(0);
     start(handleFinalResult);
@@ -132,25 +123,7 @@ export function TranscriptionPanel({
   const handleStop = () => {
     setIsRecording(false);
     stopSpeech();
-    // Production: pass MediaRecorder audio blob to transcribeAudioViaAws(blob)
   };
-
-  const handleTextChange = (value: string) => {
-    setTranscript(value);
-  };
-
-  const handleGetFeedback = () => {
-    evaluateFeedback.mutate({
-      scenarioId,
-      transcript: transcript.trim(),
-      anonymousParticipantId: getOrCreateAnonymousParticipantId(),
-      ...(assessmentSessionId
-        ? { assessmentSessionId }
-        : {}),
-    });
-  };
-
-  const showUnsupportedBanner = !isSupported;
 
   return (
     <Card
@@ -159,7 +132,7 @@ export function TranscriptionPanel({
     >
       <CardHeader className="flex flex-row flex-wrap items-center justify-between gap-2 border-b border-slate-100 py-3 pb-3">
         <CardTitle className="text-base font-semibold text-slate-800">
-          Live Transcription
+          {title}
         </CardTitle>
         {isRecording && (
           <Badge
@@ -176,7 +149,23 @@ export function TranscriptionPanel({
       </CardHeader>
 
       <CardContent className="flex flex-1 flex-col space-y-4 px-4 pb-4 pt-4">
-        {showUnsupportedBanner && (
+        {priorSegments.length > 0 ? (
+          <div className="space-y-2 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2">
+            <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">
+              Already communicated
+            </p>
+            {priorSegments.map((segment) => (
+              <div key={segment.label}>
+                <p className="text-xs font-medium text-slate-600">{segment.label}</p>
+                <p className="text-sm leading-relaxed text-slate-700">
+                  {segment.text}
+                </p>
+              </div>
+            ))}
+          </div>
+        ) : null}
+
+        {!isSupported && !isReadonly && (
           <p
             role="status"
             className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900"
@@ -213,17 +202,20 @@ export function TranscriptionPanel({
                 <p className="text-xs text-slate-500">Speak clearly</p>
               </>
             ) : (
-              <p className="text-xs text-slate-500">Ready to record</p>
+              <p className="text-xs text-slate-500">
+                {isReadonly ? "Recording closed" : "Ready to record"}
+              </p>
             )}
           </div>
 
           <div className="flex min-h-[240px] min-w-0 flex-1 self-stretch lg:min-h-0">
             <Textarea
-              value={displayValue}
-              onChange={(e) => handleTextChange(e.target.value)}
-              placeholder="Your spoken hazard explanation will appear here. You can also type directly."
+              value={isReadonly ? priorSegments.map((segment) => segment.text).join("\n\n") || displayValue : displayValue}
+              onChange={(event) => setTranscript(event.target.value)}
+              placeholder={placeholder}
+              readOnly={isReadonly}
               className="field-sizing-fixed size-full min-h-0 resize-none overflow-y-auto text-sm leading-relaxed"
-              aria-label="Transcript"
+              aria-label={mode === "clarification" ? "Clarification transcript" : "Transcript"}
             />
           </div>
 
@@ -239,7 +231,7 @@ export function TranscriptionPanel({
               type="button"
               className="bg-[#1e4a8c] hover:bg-[#163a6e]"
               onClick={handleStart}
-              disabled={!isSupported || isRecording}
+              disabled={!isSupported || isRecording || isReadonly || isSubmitting}
             >
               <Mic className="size-4" />
               Start Talking
@@ -258,21 +250,26 @@ export function TranscriptionPanel({
 
             <Separator />
 
-            <Button
-              type="button"
-              variant="outline"
-              className="border-[#1e4a8c] text-[#1e4a8c] hover:bg-[#1e4a8c]/5"
-              disabled={!canGetFeedback}
-              onClick={handleGetFeedback}
-            >
-              <MessageSquare className="size-4" />
-              {evaluateFeedback.isPending ? "Evaluating…" : "Get Feedback"}
-            </Button>
-            <p className="text-center text-[10px] text-slate-400">
-              {isRecording
-                ? "Stop recording before requesting feedback"
-                : "Feedback available after stopping"}
-            </p>
+            {!isReadonly ? (
+              <>
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="border-[#1e4a8c] text-[#1e4a8c] hover:bg-[#1e4a8c]/5"
+                  disabled={!canGetFeedback}
+                  onClick={() => onSubmit(transcript.trim())}
+                >
+                  <MessageSquare className="size-4" />
+                  {isSubmitting ? submittingLabel : submitLabel}
+                </Button>
+                <p className="text-center text-[10px] text-slate-400">
+                  {helperText ??
+                    (isRecording
+                      ? "Stop recording before submitting"
+                      : "Available after you stop recording")}
+                </p>
+              </>
+            ) : null}
           </div>
         </div>
       </CardContent>

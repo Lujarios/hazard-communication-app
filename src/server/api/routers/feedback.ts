@@ -1,5 +1,4 @@
 import { TRPCError } from "@trpc/server";
-import { and, eq } from "drizzle-orm";
 import { z } from "zod";
 
 import { createTRPCRouter, publicProcedure } from "~/server/api/trpc";
@@ -9,12 +8,14 @@ import {
   SafetyTalkEvaluationError,
 } from "~/server/openai/evaluate-safety-talk";
 import { loadScenarioEvaluationContext } from "~/server/scenarios/load-evaluation-context";
+import { resolveAssessmentSession } from "~/server/assessment-run/resolve-session";
 import {
   assessmentAttemptPersonaEvaluations,
   assessmentAttempts,
-  assessmentSessions,
+  assessmentRuns,
 } from "~/server/db/schema";
 import type { SafetyTalkFeedback } from "~/types/feedback";
+import { WORKFLOW_VERSION_LEGACY } from "~/types/assessment-run";
 
 const uuidInput = z.string().uuid();
 
@@ -68,40 +69,53 @@ export const feedbackRouter = createTRPCRouter({
         throw error;
       }
 
-      // Persist attempt after scoring succeeds. Fail soft so the UI still gets feedback.
+      // Persist as a completed single-stage run so leftover callers stay grouped.
       try {
-        let joinCode: string | null = null;
-        let assessmentSessionId: string | null = null;
-
-        if (input.assessmentSessionId) {
-          const session = await ctx.db.query.assessmentSessions.findFirst({
-            where: and(
-              eq(assessmentSessions.id, input.assessmentSessionId),
-              eq(assessmentSessions.scenarioId, input.scenarioId),
-            ),
-            columns: { id: true, joinCode: true },
-          });
-
-          if (session) {
-            assessmentSessionId = session.id;
-            joinCode = session.joinCode;
-          }
-        }
+        const session = await resolveAssessmentSession(
+          ctx.db,
+          input.scenarioId,
+          input.assessmentSessionId,
+        );
 
         await ctx.db.transaction(async (tx) => {
+          const [run] = await tx
+            .insert(assessmentRuns)
+            .values({
+              anonymousParticipantId: input.anonymousParticipantId,
+              scenarioId: input.scenarioId,
+              assessmentSessionId: session?.id ?? null,
+              joinCode: session?.joinCode ?? null,
+              status: "completed",
+              stageCount: 1,
+              workflowVersion: WORKFLOW_VERSION_LEGACY,
+              completionReason: "legacy_single_shot",
+              completedAt: new Date(),
+            })
+            .returning({ id: assessmentRuns.id });
+
+          if (!run) {
+            throw new Error("Assessment run insert did not return an id.");
+          }
+
           const [attempt] = await tx
             .insert(assessmentAttempts)
             .values({
               anonymousParticipantId: input.anonymousParticipantId,
               scenarioId: input.scenarioId,
-              assessmentSessionId,
-              joinCode,
+              assessmentSessionId: session?.id ?? null,
+              runId: run.id,
+              joinCode: session?.joinCode ?? null,
+              stageType: "initial",
+              stageIndex: 0,
+              segmentTranscript: input.transcript,
               transcript: input.transcript,
               overallStars: feedback.overallStars,
               overallSummary: feedback.overallSummary,
               criteriaRatings: feedback.criteriaRatings,
               missedItems: feedback.missedItems,
               personaFeedback: feedback.personaFeedback ?? null,
+              selectedFollowUpQuestions: [],
+              evaluationStatus: "succeeded",
             })
             .returning({ id: assessmentAttempts.id });
 

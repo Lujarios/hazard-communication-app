@@ -175,6 +175,32 @@ type AttemptRow = AttemptSummaryRow & {
   createdAt: Date;
 };
 
+function latestStagePerRun<
+  T extends {
+    id: string;
+    runId: string | null;
+    stageIndex: number;
+    createdAt: Date;
+  },
+>(rows: T[]): T[] {
+  const byRun = new Map<string, T>();
+
+  for (const row of rows) {
+    const key = row.runId ?? row.id;
+    const existing = byRun.get(key);
+    if (
+      !existing ||
+      row.stageIndex > existing.stageIndex ||
+      (row.stageIndex === existing.stageIndex &&
+        row.createdAt.getTime() > existing.createdAt.getTime())
+    ) {
+      byRun.set(key, row);
+    }
+  }
+
+  return [...byRun.values()];
+}
+
 function summarizeAttempts(attempts: AttemptSummaryRow[]) {
   const attemptCount = attempts.length;
   const uniqueParticipants = new Set(
@@ -395,21 +421,26 @@ export const analyticsRouter = createTRPCRouter({
       const attempts = await ctx.db.query.assessmentAttempts.findMany({
         where: inArray(assessmentAttempts.scenarioId, scenarioIds),
         columns: {
+          id: true,
+          runId: true,
+          stageIndex: true,
           scenarioId: true,
           anonymousParticipantId: true,
           overallStars: true,
+          createdAt: true,
         },
       });
+      const runRows = latestStagePerRun(attempts);
 
-      const byScenario = new Map<string, typeof attempts>();
-      for (const attempt of attempts) {
+      const byScenario = new Map<string, typeof runRows>();
+      for (const attempt of runRows) {
         const list = byScenario.get(attempt.scenarioId) ?? [];
         list.push(attempt);
         byScenario.set(attempt.scenarioId, list);
       }
 
       const allParticipantIds = new Set(
-        attempts.map((attempt) => attempt.anonymousParticipantId),
+        runRows.map((attempt) => attempt.anonymousParticipantId),
       );
 
       return {
@@ -427,10 +458,10 @@ export const analyticsRouter = createTRPCRouter({
           };
         }),
         totals: {
-          attemptCount: attempts.length,
+          attemptCount: runRows.length,
           uniqueParticipants: allParticipantIds.size,
           averageOverallStars: average(
-            attempts.map((attempt) => attempt.overallStars),
+            runRows.map((attempt) => attempt.overallStars),
           ),
         },
       };
@@ -444,17 +475,22 @@ export const analyticsRouter = createTRPCRouter({
     .query(async ({ ctx, input }) => {
       const scenario = await assertCanViewScenario(ctx, input.scenarioId);
 
-      const attempts = await ctx.db.query.assessmentAttempts.findMany({
-        where: eq(assessmentAttempts.scenarioId, input.scenarioId),
-        columns: {
-          anonymousParticipantId: true,
-          overallStars: true,
-          criteriaRatings: true,
-          missedItems: true,
-          createdAt: true,
-        },
-        orderBy: [asc(assessmentAttempts.createdAt)],
-      });
+      const attempts = latestStagePerRun(
+        await ctx.db.query.assessmentAttempts.findMany({
+          where: eq(assessmentAttempts.scenarioId, input.scenarioId),
+          columns: {
+            id: true,
+            runId: true,
+            stageIndex: true,
+            anonymousParticipantId: true,
+            overallStars: true,
+            criteriaRatings: true,
+            missedItems: true,
+            createdAt: true,
+          },
+          orderBy: [asc(assessmentAttempts.createdAt)],
+        }),
+      );
 
       return {
         scenario: {

@@ -110,8 +110,8 @@ function EmptyState() {
           Safety Talk Scorecard
         </h3>
         <p className="mt-1 text-xs leading-relaxed text-slate-500">
-          Stop recording and click Get Feedback to receive star-rated rubric
-          scores and pinpointed guidance on what was missed.
+          Stop recording and submit your safety talk to receive star-rated
+          rubric scores and pinpointed guidance on what was missed.
         </p>
       </div>
     </div>

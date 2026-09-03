@@ -4,7 +4,8 @@
  *
  * Includes auth/org columns introduced for Cognito manager login,
  * org-scoped custom persona columns, persona characteristic fields,
- * anonymous assessment attempts, and per-persona evaluation rows.
+ * anonymous assessment attempts, per-persona evaluation rows,
+ * and assessment run / clarification-stage columns.
  */
 import postgres from "postgres";
 
@@ -102,6 +103,71 @@ END $$`,
   `CREATE INDEX IF NOT EXISTS "attempt_persona_eval_literacy_idx" ON "hazard-communication-app_assessment_attempt_persona_evaluation" USING btree ("englishLiteracy")`,
   `CREATE INDEX IF NOT EXISTS "attempt_persona_eval_experience_idx" ON "hazard-communication-app_assessment_attempt_persona_evaluation" USING btree ("experienceLevel")`,
   `CREATE INDEX IF NOT EXISTS "attempt_persona_eval_job_role_idx" ON "hazard-communication-app_assessment_attempt_persona_evaluation" USING btree ("jobRole")`,
+  `CREATE TABLE IF NOT EXISTS "hazard-communication-app_assessment_run" (
+	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
+	"anonymousParticipantId" varchar(36) NOT NULL,
+	"scenarioId" uuid NOT NULL,
+	"assessmentSessionId" uuid,
+	"joinCode" varchar(6),
+	"status" varchar(32) DEFAULT 'awaiting_initial' NOT NULL,
+	"stageCount" integer DEFAULT 0 NOT NULL,
+	"workflowVersion" integer DEFAULT 2 NOT NULL,
+	"completionReason" varchar(32),
+	"pendingSegmentTranscript" text,
+	"lastError" text,
+	"completedAt" timestamp with time zone,
+	"createdAt" timestamp with time zone NOT NULL,
+	"updatedAt" timestamp with time zone
+)`,
+  `DO $$ BEGIN
+ ALTER TABLE "hazard-communication-app_assessment_run" ADD CONSTRAINT "hazard-communication-app_assessment_run_scenarioId_hazard-communication-app_scenario_id_fk" FOREIGN KEY ("scenarioId") REFERENCES "public"."hazard-communication-app_scenario"("id") ON DELETE cascade ON UPDATE no action;
+EXCEPTION
+ WHEN duplicate_object THEN null;
+END $$`,
+  `DO $$ BEGIN
+ ALTER TABLE "hazard-communication-app_assessment_run" ADD CONSTRAINT "hazard-communication-app_assessment_run_assessmentSessionId_hazard-communication-app_assessment_session_id_fk" FOREIGN KEY ("assessmentSessionId") REFERENCES "public"."hazard-communication-app_assessment_session"("id") ON DELETE set null ON UPDATE no action;
+EXCEPTION
+ WHEN duplicate_object THEN null;
+END $$`,
+  `CREATE INDEX IF NOT EXISTS "assessment_run_participant_idx" ON "hazard-communication-app_assessment_run" USING btree ("anonymousParticipantId")`,
+  `CREATE INDEX IF NOT EXISTS "assessment_run_scenario_idx" ON "hazard-communication-app_assessment_run" USING btree ("scenarioId")`,
+  `CREATE INDEX IF NOT EXISTS "assessment_run_session_idx" ON "hazard-communication-app_assessment_run" USING btree ("assessmentSessionId")`,
+  `CREATE INDEX IF NOT EXISTS "assessment_run_status_idx" ON "hazard-communication-app_assessment_run" USING btree ("status")`,
+  `CREATE INDEX IF NOT EXISTS "assessment_run_participant_scenario_idx" ON "hazard-communication-app_assessment_run" USING btree ("anonymousParticipantId","scenarioId")`,
+  `CREATE UNIQUE INDEX IF NOT EXISTS "assessment_run_active_participant_scenario_uidx" ON "hazard-communication-app_assessment_run" ("anonymousParticipantId","scenarioId") WHERE status <> 'completed'`,
+  `ALTER TABLE "hazard-communication-app_assessment_attempt" ADD COLUMN IF NOT EXISTS "runId" uuid`,
+  `ALTER TABLE "hazard-communication-app_assessment_attempt" ADD COLUMN IF NOT EXISTS "stageType" varchar(32) DEFAULT 'initial' NOT NULL`,
+  `ALTER TABLE "hazard-communication-app_assessment_attempt" ADD COLUMN IF NOT EXISTS "stageIndex" integer DEFAULT 0 NOT NULL`,
+  `ALTER TABLE "hazard-communication-app_assessment_attempt" ADD COLUMN IF NOT EXISTS "segmentTranscript" text`,
+  `ALTER TABLE "hazard-communication-app_assessment_attempt" ADD COLUMN IF NOT EXISTS "selectedFollowUpQuestions" jsonb`,
+  `ALTER TABLE "hazard-communication-app_assessment_attempt" ADD COLUMN IF NOT EXISTS "evaluationStatus" varchar(16) DEFAULT 'succeeded' NOT NULL`,
+  `ALTER TABLE "hazard-communication-app_assessment_attempt" ADD COLUMN IF NOT EXISTS "participantFinishedAfterStage" boolean DEFAULT false NOT NULL`,
+  `INSERT INTO "hazard-communication-app_assessment_run" (
+    "id", "anonymousParticipantId", "scenarioId", "assessmentSessionId", "joinCode",
+    "status", "stageCount", "workflowVersion", "completionReason", "completedAt", "createdAt"
+  )
+  SELECT
+    a."id", a."anonymousParticipantId", a."scenarioId", a."assessmentSessionId", a."joinCode",
+    'completed', 1, 1, 'legacy_single_shot', a."createdAt", a."createdAt"
+  FROM "hazard-communication-app_assessment_attempt" a
+  WHERE a."runId" IS NULL
+    AND NOT EXISTS (
+      SELECT 1 FROM "hazard-communication-app_assessment_run" r WHERE r."id" = a."id"
+    )`,
+  `UPDATE "hazard-communication-app_assessment_attempt"
+   SET "runId" = "id",
+       "stageType" = COALESCE("stageType", 'initial'),
+       "stageIndex" = COALESCE("stageIndex", 0),
+       "segmentTranscript" = COALESCE("segmentTranscript", "transcript"),
+       "evaluationStatus" = COALESCE("evaluationStatus", 'succeeded')
+   WHERE "runId" IS NULL`,
+  `DO $$ BEGIN
+ ALTER TABLE "hazard-communication-app_assessment_attempt" ADD CONSTRAINT "hazard-communication-app_assessment_attempt_runId_hazard-communication-app_assessment_run_id_fk" FOREIGN KEY ("runId") REFERENCES "public"."hazard-communication-app_assessment_run"("id") ON DELETE cascade ON UPDATE no action;
+EXCEPTION
+ WHEN duplicate_object THEN null;
+END $$`,
+  `CREATE INDEX IF NOT EXISTS "assessment_attempt_run_idx" ON "hazard-communication-app_assessment_attempt" USING btree ("runId")`,
+  `CREATE UNIQUE INDEX IF NOT EXISTS "assessment_attempt_run_stage_uidx" ON "hazard-communication-app_assessment_attempt" ("runId","stageIndex") WHERE "runId" IS NOT NULL`,
 ];
 
 try {

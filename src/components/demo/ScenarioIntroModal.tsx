@@ -13,6 +13,7 @@ import {
   CardTitle,
 } from "~/components/ui/card";
 import { useEscapeKey, useFocusTrap } from "~/hooks/use-tutorial-a11y";
+import { DIALOG_BACKDROP_CLASS } from "~/lib/utils";
 
 type ScenarioIntroModalProps = {
   scenarioId: string;
@@ -62,7 +63,7 @@ export function ScenarioIntroModal({
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
       <button
         type="button"
-        className="absolute inset-0 bg-black/60"
+        className={DIALOG_BACKDROP_CLASS}
         aria-label="Close scenario introduction"
         onClick={onClose}
       />

@@ -31,6 +31,7 @@ import {
 import { useTutorial } from "~/hooks/use-tutorial";
 import { useEscapeKey, useFocusTrap } from "~/hooks/use-tutorial-a11y";
 import { INTRO_SLIDES } from "~/lib/tutorial-steps";
+import { DIALOG_BACKDROP_CLASS } from "~/lib/utils";
 import type { IntroSlideVisual } from "~/types/tutorial";
 
 function IntroSlideInfographic({ visual }: { visual: IntroSlideVisual }) {
@@ -175,7 +176,7 @@ export function TutorialIntroModal() {
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
       <button
         type="button"
-        className="absolute inset-0 bg-black/60"
+        className={DIALOG_BACKDROP_CLASS}
         aria-label="Close tutorial"
         onClick={close}
       />

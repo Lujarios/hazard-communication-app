@@ -30,9 +30,9 @@ const steps = [
   },
   {
     icon: Users,
-    title: "Get AI worker feedback",
+    title: "Get worker feedback",
     description:
-      "AI worker personas listen to your talk and provide reactions, plus a rubric-based scorecard.",
+      "Workers listen to your talk, may ask a short follow-up, and you receive a rubric-based scorecard.",
   },
 ] as const;
 
@@ -55,7 +55,7 @@ export function HomePage({ demoScenarioId }: HomePageProps) {
             SafeTalk helps trainees and supervisors practice pre-job hazard
             identification and communication. Review a workplace scenario,
             deliver a spoken safety talk, and receive structured feedback from
-            AI worker personas.
+            worker personas.
           </p>
           <div className="flex flex-wrap items-center justify-center gap-3 pt-2">
             <Button

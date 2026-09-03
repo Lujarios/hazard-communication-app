@@ -19,8 +19,9 @@ import { Button } from "~/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card";
 import { personaCommunicationCriteria } from "~/lib/persona-communication-rubric";
 import type { AssessmentPersona } from "~/types/assessment";
+import type { FollowUpQuestionResolution, SelectedFollowUpQuestion } from "~/types/assessment-run";
 import type { FollowUpQuestionCandidate, PersonaFeedback } from "~/types/feedback";
-import { cn } from "~/lib/utils";
+import { cn, DIALOG_BACKDROP_CLASS } from "~/lib/utils";
 
 function AudioBars({ active }: { active: boolean }) {
   const heights = ["h-2", "h-4", "h-3", "h-5", "h-2", "h-4", "h-3"];
@@ -76,16 +77,25 @@ type PersonaListenersProps = {
   isRecording?: boolean;
   isEvaluating?: boolean;
   personaFeedback?: PersonaFeedback[];
+  highlightedPersonaIds?: string[];
+  unresolvedPersonaIds?: string[];
+  selectedQuestions?: SelectedFollowUpQuestion[];
+  questionResolutions?: FollowUpQuestionResolution[];
+  suppressGeneratedQuestions?: boolean;
 };
 
 function PersonaStatus({
   isRecording,
   isEvaluating,
   feedback,
+  hasSelectedQuestion,
+  isUnresolved,
 }: {
   isRecording: boolean;
   isEvaluating: boolean;
   feedback?: PersonaFeedback;
+  hasSelectedQuestion?: boolean;
+  isUnresolved?: boolean;
 }) {
   if (isRecording) {
     return (
@@ -106,7 +116,7 @@ function PersonaStatus({
     );
   }
 
-  if (hasPersonaQuestion(feedback)) {
+  if (hasSelectedQuestion) {
     return (
       <div className="mt-1.5">
         <Badge
@@ -115,6 +125,20 @@ function PersonaStatus({
         >
           <HelpCircle className="size-3" aria-hidden />
           Has a question
+        </Badge>
+      </div>
+    );
+  }
+
+  if (isUnresolved) {
+    return (
+      <div className="mt-1.5">
+        <Badge
+          variant="outline"
+          className="gap-1 border-amber-600 bg-amber-50 px-2 py-0.5 text-[10px] font-semibold text-amber-900"
+        >
+          <HelpCircle className="size-3" aria-hidden />
+          Still unclear
         </Badge>
       </div>
     );
@@ -155,13 +179,24 @@ function PersonaStatus({
 function PersonaDetailsDialog({
   persona,
   feedback,
+  selectedQuestion,
+  unresolvedQuestion,
+  suppressGeneratedQuestions,
   onClose,
 }: {
   persona: AssessmentPersona;
   feedback?: PersonaFeedback;
+  selectedQuestion?: SelectedFollowUpQuestion;
+  unresolvedQuestion?: FollowUpQuestionResolution;
+  suppressGeneratedQuestions?: boolean;
   onClose: () => void;
 }) {
-  const questions = getPersonaFollowUpQuestions(feedback);
+  const generatedQuestions = suppressGeneratedQuestions
+    ? []
+    : getPersonaFollowUpQuestions(feedback);
+  const questions = selectedQuestion
+    ? [{ question: selectedQuestion.question, reason: selectedQuestion.reason }]
+    : generatedQuestions;
   const communicationScores = feedback?.scores;
 
   useEffect(() => {
@@ -176,16 +211,18 @@ function PersonaDetailsDialog({
   }, [onClose]);
 
   return (
-    <div
-      className="fixed inset-0 z-50 flex items-end justify-center bg-slate-900/40 p-4 sm:items-center"
-      role="presentation"
-      onClick={onClose}
-    >
+    <div className="fixed inset-0 z-50 flex items-end justify-center p-4 sm:items-center">
+      <button
+        type="button"
+        className={DIALOG_BACKDROP_CLASS}
+        aria-label={`Close ${persona.name} details`}
+        onClick={onClose}
+      />
       <div
         role="dialog"
         aria-modal="true"
         aria-labelledby={`persona-details-${persona.id}`}
-        className="w-full max-w-md max-h-[90vh] overflow-y-auto rounded-xl border border-slate-200 bg-white p-4 shadow-lg"
+        className="relative z-10 w-full max-w-md max-h-[90vh] overflow-y-auto rounded-xl border border-slate-200 bg-white p-4 shadow-lg"
         onClick={(event) => event.stopPropagation()}
       >
         <div className="flex items-start gap-3">
@@ -225,17 +262,23 @@ function PersonaDetailsDialog({
               variant="outline"
               className={cn(
                 "gap-1 px-2 py-0.5 text-[10px] font-semibold",
-                feedback.understood
-                  ? "border-emerald-600 bg-emerald-50 text-emerald-800"
-                  : "border-amber-600 bg-amber-50 text-amber-900",
+                unresolvedQuestion && !unresolvedQuestion.addressed
+                  ? "border-amber-600 bg-amber-50 text-amber-900"
+                  : feedback.understood
+                    ? "border-emerald-600 bg-emerald-50 text-emerald-800"
+                    : "border-amber-600 bg-amber-50 text-amber-900",
               )}
             >
-              {feedback.understood ? (
+              {feedback.understood && !unresolvedQuestion ? (
                 <CheckCircle2 className="size-3" aria-hidden />
               ) : (
                 <HelpCircle className="size-3" aria-hidden />
               )}
-              {feedback.understood ? "Understood" : "Needs clarification"}
+              {unresolvedQuestion && !unresolvedQuestion.addressed
+                ? "Still unclear"
+                : feedback.understood
+                  ? "Understood"
+                  : "Needs clarification"}
             </Badge>
 
             <blockquote className="border-l-2 border-[#1e4a8c]/30 pl-2.5 text-sm leading-relaxed text-slate-700">
@@ -314,6 +357,17 @@ function PersonaDetailsDialog({
               </div>
             ) : null}
 
+            {unresolvedQuestion && !unresolvedQuestion.addressed ? (
+              <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2">
+                <p className="text-[10px] font-semibold uppercase tracking-wide text-amber-800">
+                  Earlier question not fully addressed
+                </p>
+                <p className="mt-1 text-sm leading-relaxed text-amber-950">
+                  {unresolvedQuestion.question}
+                </p>
+              </div>
+            ) : null}
+
             {questions.length > 0 ? (
               <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2">
                 <p className="text-[10px] font-semibold uppercase tracking-wide text-amber-800">
@@ -351,6 +405,11 @@ export function PersonaListeners({
   isRecording = false,
   isEvaluating = false,
   personaFeedback,
+  highlightedPersonaIds,
+  unresolvedPersonaIds,
+  selectedQuestions,
+  questionResolutions,
+  suppressGeneratedQuestions = false,
 }: PersonaListenersProps) {
   const [selectedPersonaId, setSelectedPersonaId] = useState<string | null>(
     null,
@@ -366,7 +425,7 @@ export function PersonaListeners({
     >
       <CardHeader className="flex justify-center border-b border-slate-100 py-3 pb-3">
         <CardTitle className="flex items-center justify-center gap-2 text-base font-semibold text-slate-800">
-          AI Worker Listeners
+          Worker Listeners
           <Info className="size-4 text-slate-400" aria-hidden />
         </CardTitle>
       </CardHeader>
@@ -375,7 +434,10 @@ export function PersonaListeners({
         <ul className="m-0 flex flex-col gap-1.5 p-0">
           {personas.map((persona) => {
             const feedback = getPersonaFeedback(persona.id, personaFeedback);
-            const waitingOnQuestion = hasPersonaQuestion(feedback);
+            const waitingOnQuestion = highlightedPersonaIds
+              ? highlightedPersonaIds.includes(persona.id)
+              : hasPersonaQuestion(feedback);
+            const isUnresolved = unresolvedPersonaIds?.includes(persona.id) ?? false;
 
             return (
               <li key={persona.id}>
@@ -386,7 +448,7 @@ export function PersonaListeners({
                   onClick={() => setSelectedPersonaId(persona.id)}
                   className={cn(
                     "flex w-full items-center gap-3 rounded-lg border px-3 py-2.5 text-left ring-1 transition-colors",
-                    waitingOnQuestion
+                    waitingOnQuestion || isUnresolved
                       ? "border-amber-200 bg-amber-50/80 ring-amber-100 hover:border-amber-300"
                       : "border-slate-100/80 bg-slate-50/60 ring-slate-100/50 hover:border-slate-200 hover:bg-slate-50",
                   )}
@@ -410,6 +472,8 @@ export function PersonaListeners({
                       isRecording={isRecording}
                       isEvaluating={isEvaluating}
                       feedback={feedback}
+                      hasSelectedQuestion={waitingOnQuestion}
+                      isUnresolved={isUnresolved}
                     />
                   </div>
                 </button>
@@ -429,6 +493,16 @@ export function PersonaListeners({
         <PersonaDetailsDialog
           persona={selectedPersona}
           feedback={getPersonaFeedback(selectedPersona.id, personaFeedback)}
+          selectedQuestion={selectedQuestions?.find(
+            (question) =>
+              question.personaId === selectedPersona.id ||
+              question.mergedFromPersonaIds.includes(selectedPersona.id),
+          )}
+          unresolvedQuestion={questionResolutions?.find(
+            (resolution) =>
+              resolution.personaId === selectedPersona.id && !resolution.addressed,
+          )}
+          suppressGeneratedQuestions={suppressGeneratedQuestions}
           onClose={() => setSelectedPersonaId(null)}
         />
       ) : null}

@@ -16,7 +16,7 @@ export const INTRO_SLIDES: IntroSlide[] = [
   {
     id: "flow",
     title: "How the assessment works",
-    body: "Study the scenario, record or type your safety talk, get reactions from AI worker listeners, then review a star-rated scorecard with specific feedback on what you missed.",
+    body: "Study the scenario, give your initial safety talk, then respond if workers ask a follow-up. You can finish after any round — later replies build on what you already said.",
     visual: "flow",
   },
   {
@@ -42,15 +42,15 @@ export const SPOTLIGHT_STEPS: SpotlightStep[] = [
     body: "Record your hazard explanation here. Your words appear in the transcript as you speak, or you can type directly if your microphone is unavailable.",
     target: "transcription",
     howToUse:
-      "Click Start Talking to record, Stop when finished, then click Get Feedback to send your transcript for evaluation.",
+      "Click Start Talking to record, Stop when finished, then submit your safety talk. If workers ask a follow-up, reply only to their question — you do not need to repeat the whole talk.",
   },
   {
     id: "personas",
-    title: "AI worker listeners",
-    body: "Five AI worker personas stand in for your crew — experienced workers, new hires, and teammates with different communication needs.",
+    title: "Worker listeners",
+    body: "These workers stand in for your crew — experienced workers, new hires, and teammates with different communication needs.",
     target: "personas",
     howToUse:
-      "While you talk they show as listening. After feedback, click a worker to see their details. A yellow question mark means that worker has a follow-up about something you missed.",
+      "While you talk they show as listening. After you submit, one or two may ask a clarification question. Click a worker to see their background. You can finish the assessment without answering every possible follow-up.",
   },
   {
     id: "scorecard",
@@ -58,6 +58,6 @@ export const SPOTLIGHT_STEPS: SpotlightStep[] = [
     body: "Your feedback appears here: an overall summary, star ratings against safety rubrics, and a list of hazards, controls, or communication gaps you missed.",
     target: "scorecard",
     howToUse:
-      "Review missed items and lower-scored criteria, then try another take if you want to improve your score.",
+      "Review missed items and lower-scored criteria. If workers still have a question, you can clarify — or finish the assessment when you are ready.",
   },
 ];

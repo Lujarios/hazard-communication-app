@@ -258,9 +258,53 @@ export const assessmentSessions = createTable(
 );
 
 /**
- * Anonymous trainee attempts after Get Feedback succeeds.
- * Separate from scenario definition tables; no Cognito/user account required.
- * Multiple rows per anonymousParticipantId enable improvement-over-time analytics.
+ * One evolving participant conversation on a scenario.
+ * Stages (initial talk + optional clarifications) are stored as assessment_attempt rows.
+ */
+export const assessmentRuns = createTable(
+  "assessment_run",
+  (d) => ({
+    id: d.uuid().primaryKey().defaultRandom(),
+    anonymousParticipantId: d.varchar({ length: 36 }).notNull(),
+    scenarioId: d
+      .uuid()
+      .notNull()
+      .references(() => scenarios.id, { onDelete: "cascade" }),
+    assessmentSessionId: d
+      .uuid()
+      .references(() => assessmentSessions.id, { onDelete: "set null" }),
+    joinCode: d.varchar({ length: 6 }),
+    /** awaiting_initial | processing | followup_available | ready_to_complete | completed */
+    status: d.varchar({ length: 32 }).notNull().default("awaiting_initial"),
+    /** Successful speech submissions so far (0–3). */
+    stageCount: d.integer().notNull().default(0),
+    workflowVersion: d.integer().notNull().default(2),
+    completionReason: d.varchar({ length: 32 }),
+    pendingSegmentTranscript: d.text(),
+    lastError: d.text(),
+    completedAt: d.timestamp({ withTimezone: true }),
+    createdAt: d
+      .timestamp({ withTimezone: true })
+      .$defaultFn(() => /* @__PURE__ */ new Date())
+      .notNull(),
+    updatedAt: d.timestamp({ withTimezone: true }).$onUpdate(() => new Date()),
+  }),
+  (t) => [
+    index("assessment_run_participant_idx").on(t.anonymousParticipantId),
+    index("assessment_run_scenario_idx").on(t.scenarioId),
+    index("assessment_run_session_idx").on(t.assessmentSessionId),
+    index("assessment_run_status_idx").on(t.status),
+    index("assessment_run_participant_scenario_idx").on(
+      t.anonymousParticipantId,
+      t.scenarioId,
+    ),
+  ],
+);
+
+/**
+ * One evaluated speech stage inside an assessment run.
+ * Legacy rows (workflow v1) are single-stage completed runs.
+ * Later clarifications insert a new row; they do not overwrite earlier stages.
  */
 export const assessmentAttempts = createTable(
   "assessment_attempt",
@@ -275,14 +319,24 @@ export const assessmentAttempts = createTable(
     assessmentSessionId: d
       .uuid()
       .references(() => assessmentSessions.id, { onDelete: "set null" }),
+    runId: d.uuid().references(() => assessmentRuns.id, { onDelete: "cascade" }),
     /** Join code snapshot at attempt time (session may later close). */
     joinCode: d.varchar({ length: 6 }),
+    /** initial | clarification_1 | clarification_2 */
+    stageType: d.varchar({ length: 32 }).notNull().default("initial"),
+    stageIndex: d.integer().notNull().default(0),
+    /** Speech from this turn only. */
+    segmentTranscript: d.text(),
+    /** Cumulative communication scored for this stage. */
     transcript: d.text().notNull(),
     overallStars: d.integer().notNull(),
     overallSummary: d.text().notNull(),
     criteriaRatings: d.jsonb().notNull(),
     missedItems: d.jsonb().notNull(),
     personaFeedback: d.jsonb(),
+    selectedFollowUpQuestions: d.jsonb(),
+    evaluationStatus: d.varchar({ length: 16 }).notNull().default("succeeded"),
+    participantFinishedAfterStage: d.boolean().notNull().default(false),
     createdAt: d
       .timestamp({ withTimezone: true })
       .$defaultFn(() => /* @__PURE__ */ new Date())
@@ -292,6 +346,8 @@ export const assessmentAttempts = createTable(
     index("assessment_attempt_participant_idx").on(t.anonymousParticipantId),
     index("assessment_attempt_scenario_idx").on(t.scenarioId),
     index("assessment_attempt_session_idx").on(t.assessmentSessionId),
+    index("assessment_attempt_run_idx").on(t.runId),
+    uniqueIndex("assessment_attempt_run_stage_uidx").on(t.runId, t.stageIndex),
     index("assessment_attempt_participant_scenario_idx").on(
       t.anonymousParticipantId,
       t.scenarioId,
@@ -383,6 +439,7 @@ export const scenariosRelations = relations(scenarios, ({ one, many }) => ({
   hazards: many(scenarioHazards),
   scenarioPersonas: many(scenarioPersonas),
   assessmentSessions: many(assessmentSessions),
+  assessmentRuns: many(assessmentRuns),
   assessmentAttempts: many(assessmentAttempts),
 }));
 
@@ -428,6 +485,22 @@ export const assessmentSessionsRelations = relations(
       references: [users.id],
     }),
     attempts: many(assessmentAttempts),
+    runs: many(assessmentRuns),
+  }),
+);
+
+export const assessmentRunsRelations = relations(
+  assessmentRuns,
+  ({ one, many }) => ({
+    scenario: one(scenarios, {
+      fields: [assessmentRuns.scenarioId],
+      references: [scenarios.id],
+    }),
+    assessmentSession: one(assessmentSessions, {
+      fields: [assessmentRuns.assessmentSessionId],
+      references: [assessmentSessions.id],
+    }),
+    stages: many(assessmentAttempts),
   }),
 );
 
@@ -441,6 +514,10 @@ export const assessmentAttemptsRelations = relations(
     assessmentSession: one(assessmentSessions, {
       fields: [assessmentAttempts.assessmentSessionId],
       references: [assessmentSessions.id],
+    }),
+    run: one(assessmentRuns, {
+      fields: [assessmentAttempts.runId],
+      references: [assessmentRuns.id],
     }),
     personaEvaluations: many(assessmentAttemptPersonaEvaluations),
   }),

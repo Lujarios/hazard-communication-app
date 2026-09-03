@@ -2,7 +2,7 @@ const STORAGE_KEY = "safetalk.anonymousParticipantId";
 
 /**
  * Stable anonymous trainee id for analytics (no name, role, or other PII).
- * Persisted in localStorage so multiple Get Feedback attempts can be linked.
+ * Persisted in localStorage so assessment stages for the same participant can be linked.
  */
 export function getOrCreateAnonymousParticipantId(): string {
   if (typeof window === "undefined") {

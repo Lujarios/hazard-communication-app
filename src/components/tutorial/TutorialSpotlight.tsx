@@ -104,7 +104,7 @@ function SpotlightOverlay({
   if (!rect) {
     return (
       <div
-        className="pointer-events-auto absolute inset-0 bg-black/60"
+        className="pointer-events-auto absolute inset-0 bg-slate-950/75 backdrop-blur-[2px]"
         aria-hidden
       />
     );
@@ -131,7 +131,7 @@ function SpotlightOverlay({
       <rect
         width="100%"
         height="100%"
-        fill="rgba(0, 0, 0, 0.6)"
+        fill="rgba(2, 6, 23, 0.75)"
         mask={`url(#${maskId})`}
       />
     </svg>

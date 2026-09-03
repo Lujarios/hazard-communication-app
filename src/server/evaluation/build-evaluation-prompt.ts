@@ -1,3 +1,4 @@
+import { formatConversationForEvaluation } from "~/lib/assessment-run-state";
 import { formatPersonaCommunicationRubricForPrompt } from "~/lib/persona-communication-rubric";
 import { formatRubricForPrompt } from "~/lib/safety-rubric";
 import {
@@ -6,11 +7,14 @@ import {
 } from "~/lib/scenario-answer-keys";
 import { formatPersonaForEvaluationPrompt } from "~/server/evaluation/persona-interpretation";
 import type { EvaluationPersona } from "~/server/scenarios/load-evaluation-context";
+import type { ConversationSegment } from "~/types/assessment-run";
 
 export type EvaluationPromptInput = {
   transcript: string;
   answerKey: ScenarioAnswerKey;
   personas: EvaluationPersona[];
+  conversation?: ConversationSegment[];
+  followUpBudget?: 0 | 1 | 2;
 };
 
 export type EvaluationPromptMessages = {
@@ -26,6 +30,8 @@ export function buildEvaluationPrompt({
   transcript,
   answerKey,
   personas,
+  conversation,
+  followUpBudget = 2,
 }: EvaluationPromptInput): EvaluationPromptMessages {
   const system = [
     "You are evaluating a trainee's spoken pre-job hazard communication for a construction safety training tool.",
@@ -35,6 +41,7 @@ export function buildEvaluationPrompt({
     "",
     "Be fair but rigorous. Credit partial coverage and differently worded but equivalent points. Call out specific gaps.",
     "Use plain language suitable for a trainee scorecard.",
+    "If the communication includes an initial safety talk plus later clarifications, evaluate the CUMULATIVE record. Credit information from any stage. Do not penalize the speaker for not repeating the initial talk when answering a worker question.",
     "",
     "Objective evaluation rules:",
     "- Assign exactly one rating (1–5 stars) for every rubric criterion listed below.",
@@ -62,13 +69,22 @@ export function buildEvaluationPrompt({
     "- shortFeedback: 1–2 sentences in that worker's voice. Make it specific and actionable for the trainee.",
     "",
     "Follow-up question candidates:",
-    "- These will be used later for clarification attempts. Generate only genuine candidates; do not redesign a conversation.",
-    "- Each question must arise from something missing, ambiguous, or poorly communicated for THAT worker.",
+    "- These may be shown to the trainee as worker clarification questions. Generate only genuine candidates; do not redesign a conversation.",
+    "- Each question must arise from something still missing, ambiguous, or poorly communicated for THAT worker after everything said so far.",
     "- Each question must be answerable by the trainee, concise, and in the assigned persona's voice.",
-    "- Do not ask for information the trainee already clearly provided.",
+    "- Do not ask for information the trainee already clearly provided in the initial talk or a later clarification.",
+    "- Do not repeat worker questions that already appear in the conversation history.",
+    "- Do not generate overlapping questions across personas. If several workers share the same gap, only the worker who most needs that detail should ask; the others should use an empty candidate list for that gap.",
+    "- Prefer distinct topics. Two questions about standing location, exclusion zones, or the same hazard count as duplicates.",
+    "- Judge each previously asked worker question on its own. If a clarification directly answered that question, do not treat it as still open even if other unrelated hazards remain missing.",
     "- Avoid vague questions such as \"Can you tell me more?\" or \"Can you clarify the hazards?\"",
     "- Good examples: \"As the new worker on this crew, I'm not sure where you want me to stand while the lift is operating. Can you clarify?\" / \"You mentioned fall protection, but when exactly are we required to tie off?\"",
-    "- Use an empty followUpQuestionCandidates array when this worker needs no clarification.",
+    followUpBudget === 0
+      ? "- This is the final clarification. Do NOT invent new follow-up questions. Use empty followUpQuestionCandidates arrays. Judge whether earlier worker questions were answered."
+      : followUpBudget === 1
+        ? "- At most ONE genuinely new remaining gap should produce a question across all workers combined. If nothing new and distinct remains, use empty arrays."
+        : "- Across all workers combined, there should be at most two distinct question topics. Empty arrays are better than similar questions from multiple workers.",
+    "- Use an empty followUpQuestionCandidates array when this worker needs no clarification. Empty is better than a filler question.",
     "- Include at most three candidates per persona. Prefer one strong question over several weak ones.",
     "",
     "## Objective rubric criteria",
@@ -81,14 +97,18 @@ export function buildEvaluationPrompt({
     formatPersonasForPrompt(personas),
   ].join("\n");
 
+  const communicationBlock =
+    conversation && conversation.length > 0
+      ? formatConversationForEvaluation(conversation)
+      : ["## Trainee transcript", transcript.trim()].join("\n");
+
   const user = [
     "## Scenario answer key",
     formatAnswerKeyForPrompt(answerKey),
     "",
-    "## Trainee transcript",
-    transcript.trim(),
+    communicationBlock,
     "",
-    "Evaluate the transcript. Return structured JSON with objective rubric scores plus one personaEvaluations entry per worker persona.",
+    "Evaluate the communication. Return structured JSON with objective rubric scores plus one personaEvaluations entry per worker persona.",
   ].join("\n");
 
   return { system, user };

@@ -57,6 +57,13 @@
       "when": 1787052659319,
       "tag": "0007_wakeful_titania",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1787055318478,
+      "tag": "0008_superb_smasher",
+      "breakpoints": true
     }
   ]
 }

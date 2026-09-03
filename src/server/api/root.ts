@@ -1,3 +1,4 @@
+import { assessmentRunRouter } from "~/server/api/routers/assessment-run";
 import { analyticsRouter } from "~/server/api/routers/analytics";
 import { assessmentSessionRouter } from "~/server/api/routers/assessment-session";
 import { feedbackRouter } from "~/server/api/routers/feedback";
@@ -14,6 +15,7 @@ import { createCallerFactory, createTRPCRouter } from "~/server/api/trpc";
 export const appRouter = createTRPCRouter({
   post: postRouter,
   feedback: feedbackRouter,
+  assessmentRun: assessmentRunRouter,
   scenario: scenarioRouter,
   assessmentSession: assessmentSessionRouter,
   analytics: analyticsRouter,
