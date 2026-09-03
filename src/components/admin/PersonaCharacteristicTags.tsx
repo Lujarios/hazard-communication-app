@@ -1,3 +1,6 @@
+/**
+ * Small badges for a persona's experience, role, literacy, and project familiarity.
+ */
 import { Badge } from "~/components/ui/badge";
 import {
   getPersonaCharacteristicTags,

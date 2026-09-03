@@ -1,3 +1,7 @@
+/**
+ * Status helpers for an assessment run: who can submit, when to auto-complete,
+ * stage labels, and how to assemble the cumulative transcript for scoring.
+ */
 import {
   ASSESSMENT_RUN_STATUSES,
   ASSESSMENT_STAGE_TYPES,

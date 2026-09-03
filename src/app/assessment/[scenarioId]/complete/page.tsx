@@ -4,6 +4,7 @@ import { AssessmentComplete } from "~/components/demo/AssessmentComplete";
 import { toAssessmentScenario } from "~/lib/assessment-scenario";
 import { api } from "~/trpc/server";
 
+/** Post-run summary. Requires `run` (and optional `session`) query params. */
 type AssessmentCompletePageProps = {
   params: Promise<{ scenarioId: string }>;
   searchParams: Promise<{ run?: string; session?: string }>;

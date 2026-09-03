@@ -1,5 +1,8 @@
 "use client";
 
+/**
+ * After a clarification round: which workers understood vs who still has questions.
+ */
 import { useEffect, useId, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { CheckCircle2, HelpCircle, MessageCircle, X } from "lucide-react";

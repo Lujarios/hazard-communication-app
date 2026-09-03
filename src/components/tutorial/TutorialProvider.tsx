@@ -1,5 +1,9 @@
 "use client";
 
+/**
+ * Tutorial open/close and step index. Wraps the assessment page so intro
+ * slides and spotlight highlights share one state tree.
+ */
 import {
   createContext,
   useCallback,

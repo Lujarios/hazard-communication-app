@@ -1,3 +1,7 @@
+/**
+ * Map persona feedback from an evaluation into DB insert rows, snapshotting
+ * characteristics so later persona edits do not rewrite historical analytics.
+ */
 import type { PersonaFeedback } from "~/types/feedback";
 import type { EvaluationPersona } from "~/server/scenarios/load-evaluation-context";
 

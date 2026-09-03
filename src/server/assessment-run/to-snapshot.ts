@@ -1,3 +1,6 @@
+/**
+ * Map DB assessment_run + attempt rows into the client AssessmentRunSnapshot.
+ */
 import type { SafetyTalkFeedback } from "~/types/feedback";
 import type {
   AssessmentCompletionReason,

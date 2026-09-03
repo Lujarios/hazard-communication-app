@@ -1,5 +1,8 @@
 "use client";
 
+/**
+ * Sign-in form. Shows Cognito and/or local credentials depending on env config.
+ */
 import { useState } from "react";
 import { signIn } from "next-auth/react";
 import { useRouter, useSearchParams } from "next/navigation";

@@ -1,5 +1,8 @@
 "use client";
 
+/**
+ * Optional on-page checklist of what a complete pre-job talk should cover.
+ */
 import { useEffect, useRef, useState } from "react";
 import { ClipboardList } from "lucide-react";
 

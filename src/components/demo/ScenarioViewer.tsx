@@ -1,3 +1,6 @@
+/**
+ * Jobsite image for the current scenario with colored hazard overlay labels.
+ */
 import Image from "next/image";
 import { FileText } from "lucide-react";
 

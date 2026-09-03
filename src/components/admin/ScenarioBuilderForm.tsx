@@ -1,5 +1,8 @@
 "use client";
 
+/**
+ * Create/edit a scenario: title, image, hazards, assigned personas, and share code.
+ */
 import { Plus } from "lucide-react";
 import { useMemo, useState } from "react";
 import { z } from "zod";

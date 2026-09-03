@@ -1,5 +1,9 @@
 "use client";
 
+/**
+ * Browser Web Speech API wrapper used by TranscriptionPanel.
+ * Falls back to unsupported when SpeechRecognition is missing.
+ */
 import { useCallback, useEffect, useRef, useState } from "react";
 
 function getSpeechRecognitionConstructor():

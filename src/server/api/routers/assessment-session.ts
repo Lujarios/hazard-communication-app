@@ -1,3 +1,7 @@
+/**
+ * Join-code sessions: managers create/rotate codes; trainees resolve a code
+ * to a scenario without logging in.
+ */
 import { TRPCError } from "@trpc/server";
 import { and, desc, eq } from "drizzle-orm";
 import { z } from "zod";

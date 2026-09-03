@@ -1,5 +1,9 @@
 "use client";
 
+/**
+ * Record / type the current speech stage. Uses the Web Speech API when
+ * available and always allows a typed transcript as fallback.
+ */
 import { useCallback, useEffect, useState } from "react";
 import { MessageSquare, Mic, Square } from "lucide-react";
 

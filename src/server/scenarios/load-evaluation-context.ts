@@ -1,3 +1,7 @@
+/**
+ * Load a scenario's answer key and assigned personas from the database
+ * for the OpenAI evaluator.
+ */
 import "server-only";
 
 import { eq } from "drizzle-orm";

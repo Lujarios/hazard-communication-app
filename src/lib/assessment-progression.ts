@@ -1,3 +1,7 @@
+/**
+ * Compare the first and last evaluated stages of a run: score deltas,
+ * resolved missed items, and a short participant-facing completion summary.
+ */
 import { getRubricCriterion } from "~/lib/safety-rubric";
 import type {
   AssessmentCompletionReason,

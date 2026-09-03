@@ -1,3 +1,6 @@
+/**
+ * Confirm a join-session id belongs to the given scenario (used when persisting attempts).
+ */
 import { and, eq } from "drizzle-orm";
 
 import { assessmentSessions } from "~/server/db/schema";

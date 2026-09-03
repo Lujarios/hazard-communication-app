@@ -1,3 +1,7 @@
+/**
+ * Assemble the system/user prompt for OpenAI: rubric, answer key, personas,
+ * and the trainee's cumulative conversation.
+ */
 import { formatConversationForEvaluation } from "~/lib/assessment-run-state";
 import { formatPersonaCommunicationRubricForPrompt } from "~/lib/persona-communication-rubric";
 import { formatRubricForPrompt } from "~/lib/safety-rubric";
@@ -82,7 +86,7 @@ export function buildEvaluationPrompt({
     followUpBudget === 0
       ? "- This is the final clarification. Do NOT invent new follow-up questions. Use empty followUpQuestionCandidates arrays. Judge whether earlier worker questions were answered."
       : followUpBudget === 1
-        ? "- At most ONE genuinely new remaining gap should produce a question across all workers combined. If nothing new and distinct remains, use empty arrays."
+        ? "- At most ONE remaining useful question may be asked across all workers. Prefer a distinct unanswered gap, including a different detail about a hazard already discussed. Use empty arrays only when no worker still needs a useful clarification."
         : "- Across all workers combined, there should be at most two distinct question topics. Empty arrays are better than similar questions from multiple workers.",
     "- Use an empty followUpQuestionCandidates array when this worker needs no clarification. Empty is better than a filler question.",
     "- Include at most three candidates per persona. Prefer one strong question over several weak ones.",

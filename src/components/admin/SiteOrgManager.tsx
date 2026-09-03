@@ -1,5 +1,8 @@
 "use client";
 
+/**
+ * Site-admin organization list: create and rename tenant companies.
+ */
 import { useState } from "react";
 
 import { Button } from "~/components/ui/button";

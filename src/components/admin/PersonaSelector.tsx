@@ -1,5 +1,8 @@
 "use client";
 
+/**
+ * Pick built-in and custom personas for a scenario; opens CreatePersonaForm.
+ */
 import { Check, Pencil, Plus } from "lucide-react";
 import { useState } from "react";
 

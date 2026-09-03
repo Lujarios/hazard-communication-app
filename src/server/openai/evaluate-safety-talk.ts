@@ -1,3 +1,7 @@
+/**
+ * Server-only OpenAI call that scores a safety talk against the rubric,
+ * answer key, and assigned personas. Returns structured SafetyTalkFeedback.
+ */
 import "server-only";
 
 import OpenAI from "openai";

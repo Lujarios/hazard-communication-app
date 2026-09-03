@@ -1,3 +1,6 @@
+/**
+ * Idempotent seed of the built-in (non-custom) worker persona catalog.
+ */
 import { and, eq, isNull } from "drizzle-orm";
 
 import { workerPersonas } from "~/lib/demo-data";

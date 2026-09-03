@@ -1,5 +1,8 @@
 "use client";
 
+/**
+ * Welcome slides shown before (or instead of) the spotlight tour.
+ */
 import { useId, useRef } from "react";
 import { createPortal } from "react-dom";
 import {

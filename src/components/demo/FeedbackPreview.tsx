@@ -1,3 +1,6 @@
+/**
+ * Thin wrapper around FeedbackScorecard for the live assessment sidebar.
+ */
 import { FeedbackScorecard } from "~/components/demo/FeedbackScorecard";
 import type { SafetyTalkFeedback } from "~/types/feedback";
 

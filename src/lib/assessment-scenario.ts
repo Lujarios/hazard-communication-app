@@ -1,3 +1,6 @@
+/**
+ * Map a database scenario (hazards, overlays, personas) to the client AssessmentScenario.
+ */
 import type { HazardLabel, HazardSeverity } from "~/lib/demo-data";
 import { getScenarioImagePath } from "~/lib/scenario-images";
 import type { AssessmentScenario } from "~/types/assessment";

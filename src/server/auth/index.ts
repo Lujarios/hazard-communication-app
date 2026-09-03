@@ -1,3 +1,7 @@
+/**
+ * Auth.js (NextAuth v5) Node runtime: Cognito and/or local Credentials,
+ * plus the Drizzle adapter. Edge-safe config lives in ./config.ts.
+ */
 import { DrizzleAdapter } from "@auth/drizzle-adapter";
 import { eq } from "drizzle-orm";
 import NextAuth from "next-auth";

@@ -1,3 +1,7 @@
+/**
+ * Legacy single-shot evaluate mutation. Still used as a fallback; persists
+ * a completed one-stage run so older callers stay in analytics.
+ */
 import { TRPCError } from "@trpc/server";
 import { z } from "zod";
 

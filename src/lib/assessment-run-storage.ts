@@ -1,3 +1,7 @@
+/**
+ * Persist the current assessment run id in localStorage so a trainee can
+ * resume the same conversation after a refresh.
+ */
 const runStorageKey = (scenarioId: string) =>
   `safetalk.assessmentRun.${scenarioId}`;
 
@@ -39,6 +43,45 @@ export function clearStoredAssessmentRunId(scenarioId: string) {
 
   try {
     window.localStorage.removeItem(runStorageKey(scenarioId));
+  } catch {
+    // Ignore storage failures.
+  }
+}
+
+const justCompletedKey = (runId: string) => `safetalk.justCompleted.${runId}`;
+
+/** Marks a run so the thank-you page can show immediately after submit. */
+export function markAssessmentJustCompleted(runId: string) {
+  if (typeof window === "undefined") {
+    return;
+  }
+
+  try {
+    window.sessionStorage.setItem(justCompletedKey(runId), "1");
+  } catch {
+    // Private browsing / blocked storage — thank-you page may be skipped.
+  }
+}
+
+export function wasAssessmentJustCompleted(runId: string): boolean {
+  if (typeof window === "undefined") {
+    return false;
+  }
+
+  try {
+    return window.sessionStorage.getItem(justCompletedKey(runId)) === "1";
+  } catch {
+    return false;
+  }
+}
+
+export function clearAssessmentJustCompleted(runId: string) {
+  if (typeof window === "undefined") {
+    return;
+  }
+
+  try {
+    window.sessionStorage.removeItem(justCompletedKey(runId));
   } catch {
     // Ignore storage failures.
   }

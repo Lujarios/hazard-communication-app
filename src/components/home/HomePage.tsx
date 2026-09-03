@@ -1,3 +1,7 @@
+/**
+ * Landing page: short pitch, how the assessment works, and entry points
+ * (sample scenario, join code, scenario admin).
+ */
 import Link from "next/link";
 import { ClipboardCheck, Mic, Users } from "lucide-react";
 

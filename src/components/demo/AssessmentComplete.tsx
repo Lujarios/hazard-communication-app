@@ -1,7 +1,11 @@
 "use client";
 
+/**
+ * Completion screen after a run finishes: strengths, improvements, and
+ * score changes across the initial talk and any clarification rounds.
+ */
 import { skipToken } from "@tanstack/react-query";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
@@ -21,11 +25,12 @@ import {
   CardTitle,
 } from "~/components/ui/card";
 import { getOrCreateAnonymousParticipantId } from "~/lib/anonymous-participant";
+import { assessmentPath } from "~/lib/assessment-routes";
 import {
-  assessmentCompletePath,
-  assessmentPath,
-} from "~/lib/assessment-routes";
-import { getStoredAssessmentRunId, storeAssessmentRunId } from "~/lib/assessment-run-storage";
+  clearAssessmentJustCompleted,
+  clearStoredAssessmentRunId,
+  wasAssessmentJustCompleted,
+} from "~/lib/assessment-run-storage";
 import { api } from "~/trpc/react";
 import type { AssessmentScenario } from "~/types/assessment";
 
@@ -42,15 +47,20 @@ export function AssessmentComplete({
 }: AssessmentCompleteProps) {
   const router = useRouter();
   const [participantId] = useState(() => getOrCreateAnonymousParticipantId());
-  const resolvedRunId = useMemo(
-    () => runId ?? getStoredAssessmentRunId(scenario.id),
-    [runId, scenario.id],
-  );
+  const [justCompleted, setJustCompleted] = useState<boolean | null>(null);
+  const newAttemptHref = assessmentPath(scenario.id, {
+    sessionId: assessmentSessionId,
+    startNew: true,
+  });
+
+  useEffect(() => {
+    setJustCompleted(Boolean(runId && wasAssessmentJustCompleted(runId)));
+  }, [runId]);
 
   const completionQuery = api.assessmentRun.getCompletion.useQuery(
-    resolvedRunId
+    runId && justCompleted
       ? {
-          runId: resolvedRunId,
+          runId,
           scenarioId: scenario.id,
           anonymousParticipantId: participantId,
         }
@@ -59,31 +69,24 @@ export function AssessmentComplete({
   );
 
   useEffect(() => {
-    if (!resolvedRunId) {
-      router.replace(assessmentPath(scenario.id, { sessionId: assessmentSessionId }));
+    if (justCompleted === false) {
+      router.replace(newAttemptHref);
     }
-  }, [assessmentSessionId, resolvedRunId, router, scenario.id]);
-
-  useEffect(() => {
-    if (completionQuery.data?.snapshot.runId) {
-      storeAssessmentRunId(scenario.id, completionQuery.data.snapshot.runId);
-    }
-  }, [completionQuery.data?.snapshot.runId, scenario.id]);
+  }, [justCompleted, newAttemptHref, router]);
 
   useEffect(() => {
     const code = completionQuery.error?.data?.code;
     if (code === "BAD_REQUEST") {
-      router.replace(assessmentPath(scenario.id, { sessionId: assessmentSessionId }));
+      router.replace(newAttemptHref);
     }
-  }, [assessmentSessionId, completionQuery.error, router, scenario.id]);
+  }, [completionQuery.error, newAttemptHref, router]);
 
-  useEffect(() => {
-    if (!runId && resolvedRunId) {
-      router.replace(
-        assessmentCompletePath(scenario.id, resolvedRunId, assessmentSessionId),
-      );
+  const beginNewAttempt = () => {
+    if (runId) {
+      clearAssessmentJustCompleted(runId);
     }
-  }, [assessmentSessionId, resolvedRunId, router, runId, scenario.id]);
+    clearStoredAssessmentRunId(scenario.id);
+  };
 
   const errorCode = completionQuery.error?.data?.code;
   const unavailable =
@@ -94,6 +97,19 @@ export function AssessmentComplete({
     ? new Date(snapshot.completedAt).toLocaleString()
     : null;
 
+  if (justCompleted === false) {
+    return (
+      <div className="min-h-screen bg-slate-50">
+        <AppHeader />
+        <main className="mx-auto max-w-lg px-4 py-16 text-center">
+          <p className="text-sm text-slate-600" role="status">
+            Starting a new assessment…
+          </p>
+        </main>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-slate-50">
       <AppHeader />
@@ -101,7 +117,7 @@ export function AssessmentComplete({
       <main className="mx-auto max-w-3xl px-4 py-10">
         {unavailable ? (
           <UnavailableState scenarioId={scenario.id} sessionId={assessmentSessionId} />
-        ) : !resolvedRunId || completionQuery.isLoading ? (
+        ) : justCompleted === null || completionQuery.isLoading ? (
           <LoadingState />
         ) : completionQuery.error && errorCode !== "BAD_REQUEST" ? (
           <UnavailableState scenarioId={scenario.id} sessionId={assessmentSessionId} />
@@ -134,8 +150,8 @@ export function AssessmentComplete({
                   Session status
                 </CardTitle>
                 <CardDescription>
-                  This attempt is closed. Refreshing this page will return you
-                  here, not to the recording workflow.
+                  This attempt is closed. Opening the scenario again starts a
+                  new attempt and does not change this submitted record.
                 </CardDescription>
               </CardHeader>
               <CardContent className="grid gap-3 py-4 sm:grid-cols-3">
@@ -259,12 +275,7 @@ export function AssessmentComplete({
                 <Link href="/">Return home</Link>
               </Button>
               <Button asChild variant="outline">
-                <Link
-                  href={assessmentPath(scenario.id, {
-                    sessionId: assessmentSessionId,
-                    startNew: true,
-                  })}
-                >
+                <Link href={newAttemptHref} onClick={beginNewAttempt}>
                   Start a new assessment
                 </Link>
               </Button>
@@ -329,7 +340,10 @@ function UnavailableState({
       </CardHeader>
       <CardContent className="flex flex-wrap gap-3 py-4">
         <Button asChild className="bg-[#1e4a8c] hover:bg-[#163a6e]">
-          <Link href={assessmentPath(scenarioId, { sessionId, startNew: true })}>
+          <Link
+            href={assessmentPath(scenarioId, { sessionId, startNew: true })}
+            onClick={() => clearStoredAssessmentRunId(scenarioId)}
+          >
             Start a new assessment
           </Link>
         </Button>

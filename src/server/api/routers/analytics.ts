@@ -1,3 +1,6 @@
+/**
+ * Org-scoped (and site-admin platform) aggregates over assessment attempts.
+ */
 import { TRPCError } from "@trpc/server";
 import { asc, desc, eq, inArray } from "drizzle-orm";
 import { z } from "zod";

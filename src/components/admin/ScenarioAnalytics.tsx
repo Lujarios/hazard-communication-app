@@ -1,5 +1,8 @@
 "use client";
 
+/**
+ * Org analytics dashboard: attempt volume, rubric trends, and missed-item breakdown.
+ */
 import { useState } from "react";
 import {
   ArrowDownRight,

@@ -291,6 +291,39 @@ describe("selectFollowUpQuestions", () => {
 
     assert.deepEqual(selected, []);
   });
+
+  it("still allows a later-round question about a different detail of the same hazard", () => {
+    const selected = selectFollowUpQuestions(
+      [
+        feedback("foreman", {
+          followUpQuestionCandidates: [
+            {
+              question: "Who is the signal person for this lift?",
+              reason: "Accountability missing",
+              relatedHazardId: "suspended-load",
+            },
+          ],
+        }),
+      ],
+      personas,
+      {
+        max: 1,
+        previouslyShown: [
+          {
+            personaId: "new-hire",
+            personaName: "New Hire",
+            question: "Where should I stand while the lift is operating?",
+            reason: "Location missing",
+            relatedHazardId: "suspended-load",
+            mergedFromPersonaIds: [],
+          },
+        ],
+      },
+    );
+
+    assert.equal(selected.length, 1);
+    assert.ok(selected[0]?.question.includes("signal person"));
+  });
 });
 
 describe("resolvePreviousQuestions", () => {

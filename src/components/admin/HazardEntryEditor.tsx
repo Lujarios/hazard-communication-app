@@ -1,5 +1,8 @@
 "use client";
 
+/**
+ * One hazard row in the scenario builder (title, description, controls, overlay).
+ */
 import { Trash2 } from "lucide-react";
 
 import { Button } from "~/components/ui/button";

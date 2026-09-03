@@ -1,5 +1,8 @@
 "use client";
 
+/**
+ * Join-code form: validates the 6-character code and routes into the assessment.
+ */
 import { useRouter } from "next/navigation";
 import { useState, type FormEvent } from "react";
 

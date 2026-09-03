@@ -1,5 +1,8 @@
 "use client";
 
+/**
+ * Shared top bar: branding, home, help/tutorial, admin links, and auth menu.
+ */
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";

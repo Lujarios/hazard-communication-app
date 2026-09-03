@@ -1,5 +1,8 @@
 "use client";
 
+/**
+ * First-visit modal describing the scenario task before the trainee records.
+ */
 import { useEffect, useId, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { CircleHelp, X } from "lucide-react";

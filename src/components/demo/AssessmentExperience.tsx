@@ -1,5 +1,10 @@
 "use client";
 
+/**
+ * Orchestrates the trainee assessment page: scenario intro, recording,
+ * evaluation, worker follow-ups, and navigation to the completion screen.
+ * Child components in this folder are presentational; run state lives here.
+ */
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 
@@ -24,7 +29,9 @@ import {
   assessmentPath,
 } from "~/lib/assessment-routes";
 import {
+  clearStoredAssessmentRunId,
   getStoredAssessmentRunId,
+  markAssessmentJustCompleted,
   storeAssessmentRunId,
 } from "~/lib/assessment-run-storage";
 import { cn } from "~/lib/utils";
@@ -88,6 +95,8 @@ function AssessmentExperienceContent({
   const [participantId] = useState(() => getOrCreateAnonymousParticipantId());
   const consumedStartNew = useRef(false);
 
+  const startedFreshFromCompleted = useRef(false);
+
   const scenarioRef = useRef<HTMLDivElement>(null);
   const sidebarRef = useRef<HTMLDivElement>(null);
   const openedQuestionsForStage = useRef<number | null>(null);
@@ -96,6 +105,8 @@ function AssessmentExperienceContent({
   const feedbackState = snapshotFeedback(snapshot);
 
   const goToCompletion = (runId: string) => {
+    markAssessmentJustCompleted(runId);
+    clearStoredAssessmentRunId(scenario.id);
     router.replace(
       assessmentCompletePath(scenario.id, runId, assessmentSessionId),
     );
@@ -103,12 +114,23 @@ function AssessmentExperienceContent({
 
   const startOrResume = api.assessmentRun.startOrResume.useMutation({
     onSuccess: (data) => {
-      storeAssessmentRunId(scenario.id, data.runId);
-      setSnapshot(data);
       if (data.status === "completed") {
-        goToCompletion(data.runId);
+        clearStoredAssessmentRunId(scenario.id);
+        if (startedFreshFromCompleted.current) {
+          return;
+        }
+        startedFreshFromCompleted.current = true;
+        startOrResume.mutate({
+          scenarioId: scenario.id,
+          anonymousParticipantId: participantId,
+          assessmentSessionId,
+          startNew: true,
+        });
         return;
       }
+
+      storeAssessmentRunId(scenario.id, data.runId);
+      setSnapshot(data);
       if (startNew) {
         router.replace(
           assessmentPath(scenario.id, { sessionId: assessmentSessionId }),

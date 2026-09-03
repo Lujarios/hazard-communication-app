@@ -1,3 +1,6 @@
+/**
+ * URL helpers for the assessment and completion pages.
+ */
 export function assessmentPath(
   scenarioId: string,
   options?: { sessionId?: string; startNew?: boolean },

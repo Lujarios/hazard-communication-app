@@ -1,5 +1,8 @@
 "use client";
 
+/**
+ * Generate, copy, and rotate the 6-character join code for a published scenario.
+ */
 import { Check, Copy, Link2, RefreshCw } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 

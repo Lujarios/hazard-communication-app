@@ -1,5 +1,8 @@
 "use client";
 
+/**
+ * Manager scenario list with status, thumbnail, edit, and open-assessment links.
+ */
 import Link from "next/link";
 import { ExternalLink, Pencil } from "lucide-react";
 

@@ -1,3 +1,6 @@
+/**
+ * Site-admin only: organizations and users (roles, org assignment, passwords).
+ */
 import { TRPCError } from "@trpc/server";
 import { asc, count, eq } from "drizzle-orm";
 import { z } from "zod";

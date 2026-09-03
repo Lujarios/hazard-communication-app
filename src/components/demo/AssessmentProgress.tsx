@@ -1,3 +1,6 @@
+/**
+ * Step indicator for the assessment: initial talk, clarifications, complete.
+ */
 import { Check } from "lucide-react";
 
 import type { AssessmentRunStatus } from "~/types/assessment-run";
@@ -16,11 +19,7 @@ type AssessmentProgressProps = {
 };
 
 function currentStepIndex(status: AssessmentRunStatus, stageCount: number): number {
-  if (status === "completed") {
-    return 3;
-  }
-
-  if (status === "ready_to_complete") {
+  if (status === "completed" || status === "ready_to_complete") {
     return 3;
   }
 
@@ -28,15 +27,19 @@ function currentStepIndex(status: AssessmentRunStatus, stageCount: number): numb
     return 0;
   }
 
-  if (status === "processing") {
-    return Math.min(stageCount, 2);
-  }
-
-  if (status === "followup_available") {
-    return Math.min(stageCount, 2);
-  }
-
   return Math.min(stageCount, 2);
+}
+
+function isStepComplete(
+  index: number,
+  status: AssessmentRunStatus,
+  stageCount: number,
+): boolean {
+  if (index === 3) {
+    return status === "completed";
+  }
+
+  return index < stageCount;
 }
 
 export function AssessmentProgress({
@@ -49,7 +52,7 @@ export function AssessmentProgress({
     <nav aria-label="Assessment progress" className="w-full">
       <ol className="flex items-center gap-2">
         {STEPS.map((step, index) => {
-          const complete = index < current || status === "completed";
+          const complete = isStepComplete(index, status, stageCount);
           const active = index === current && status !== "completed";
 
           return (
@@ -89,7 +92,7 @@ export function AssessmentProgress({
                 <span
                   className={cn(
                     "h-px min-w-4 flex-1",
-                    index < current ? "bg-emerald-500" : "bg-slate-200",
+                    complete ? "bg-emerald-500" : "bg-slate-200",
                   )}
                   aria-hidden
                 />

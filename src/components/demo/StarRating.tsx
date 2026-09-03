@@ -1,3 +1,6 @@
+/**
+ * Display-only 1–5 star row used by the scorecard and persona cards.
+ */
 import { Star } from "lucide-react";
 
 import { STAR_RATINGS, type StarRating as StarRatingValue } from "~/types/feedback";

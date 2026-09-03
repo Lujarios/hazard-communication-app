@@ -1,3 +1,7 @@
+/**
+ * Idempotent seed for the construction-site demo scenario, plus orgs/personas.
+ * Called from the home page and scenario list so a fresh database is usable.
+ */
 import { eq, isNull } from "drizzle-orm";
 
 import { SEED_ORG_ACME_ID } from "~/lib/auth-constants";

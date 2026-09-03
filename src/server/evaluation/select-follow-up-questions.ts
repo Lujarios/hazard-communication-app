@@ -1,3 +1,7 @@
+/**
+ * Rank and pick the follow-up questions shown to the trainee after a stage
+ * (at most two, preferring concrete, non-overlapping worker questions).
+ */
 import { isVagueFollowUpQuestion } from "~/server/evaluation/feedback-schema";
 import type {
   MissedItemSeverity,
@@ -247,9 +251,20 @@ function wasAlreadyAsked(
   candidate: RankedCandidate,
   previouslyShown: SelectedFollowUpQuestion[],
 ): boolean {
-  return previouslyShown.some((previous) =>
-    areNearDuplicates(candidate, toComparable(previous)),
-  );
+  return previouslyShown.some((previous) => {
+    const prior = toComparable(previous);
+    if (normalizeQuestion(candidate.question) === normalizeQuestion(prior.question)) {
+      return true;
+    }
+
+    const candidateTopic = contentTopic(candidate.question);
+    const priorTopic = contentTopic(prior.question);
+    if (candidateTopic && candidateTopic === priorTopic) {
+      return true;
+    }
+
+    return jaccard(candidate.tokens, prior.tokens) >= 0.35;
+  });
 }
 
 function rankCandidate(

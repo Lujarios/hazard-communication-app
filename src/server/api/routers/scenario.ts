@@ -1,3 +1,7 @@
+/**
+ * Scenario CRUD plus public get-by-id for the assessment page.
+ * Create/update are login-protected and org-scoped (site admins see all).
+ */
 import { TRPCError } from "@trpc/server";
 import { and, asc, desc, eq, or } from "drizzle-orm";
 import { z } from "zod";

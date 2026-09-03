@@ -1,5 +1,8 @@
 "use client";
 
+/**
+ * Confirm that the trainee wants to finish before using every clarification round.
+ */
 import { useEffect, useId, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 

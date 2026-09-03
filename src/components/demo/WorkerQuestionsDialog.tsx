@@ -1,5 +1,8 @@
 "use client";
 
+/**
+ * Modal shown after evaluation when one or two workers ask a clarification.
+ */
 import { useEffect, useId, useRef, useState, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import { MessageCircle, X } from "lucide-react";

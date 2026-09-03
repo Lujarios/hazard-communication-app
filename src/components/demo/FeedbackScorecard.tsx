@@ -1,3 +1,7 @@
+/**
+ * Rubric scorecard for one evaluated stage: overall stars, criterion ratings,
+ * written summary, and missed hazards / controls / communication items.
+ */
 import {
   AlertCircle,
   ClipboardList,

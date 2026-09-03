@@ -1,5 +1,8 @@
 "use client";
 
+/**
+ * Highlights `data-tour` regions on the assessment page, one step at a time.
+ */
 import { useCallback, useEffect, useId, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { ChevronLeft, ChevronRight, X } from "lucide-react";

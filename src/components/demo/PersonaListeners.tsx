@@ -1,5 +1,9 @@
 "use client";
 
+/**
+ * Worker persona panel: listening state during recording, then per-persona
+ * scores and any selected follow-up questions after evaluation.
+ */
 import {
   CheckCircle2,
   Headphones,

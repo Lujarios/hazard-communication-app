@@ -4,6 +4,7 @@ import { AssessmentExperience } from "~/components/demo/AssessmentExperience";
 import { toAssessmentScenario } from "~/lib/assessment-scenario";
 import { api } from "~/trpc/server";
 
+/** Trainee assessment page for one scenario. Optional `session` and `new` query params. */
 type AssessmentPageProps = {
   params: Promise<{ scenarioId: string }>;
   searchParams: Promise<{ session?: string; new?: string }>;

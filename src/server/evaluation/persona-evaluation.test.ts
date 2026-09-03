@@ -160,6 +160,19 @@ describe("buildEvaluationPrompt", () => {
     );
   });
 
+  it("asks for one remaining distinct question after the first clarification", () => {
+    const { system } = buildEvaluationPrompt({
+      transcript: "Stay clear of the load.",
+      answerKey,
+      personas: [newHire],
+      followUpBudget: 1,
+    });
+
+    assert.ok(system.includes("At most ONE remaining useful question"));
+    assert.ok(system.includes("different detail about a hazard already discussed"));
+    assert.equal(system.includes("Do NOT invent new follow-up questions"), false);
+  });
+
   it("forbids new questions after the final clarification", () => {
     const { system } = buildEvaluationPrompt({
       transcript: "Stay clear of the load.",

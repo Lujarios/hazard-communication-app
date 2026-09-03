@@ -1,3 +1,6 @@
+/**
+ * Authenticated upload of a scenario image into public/scenarios/ on local disk.
+ */
 import { mkdir, writeFile } from "node:fs/promises";
 import path from "node:path";
 

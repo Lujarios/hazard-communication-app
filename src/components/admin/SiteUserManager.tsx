@@ -1,5 +1,8 @@
 "use client";
 
+/**
+ * Site-admin user manager: create managers/admins and assign organizations.
+ */
 import { useState } from "react";
 
 import { Badge } from "~/components/ui/badge";

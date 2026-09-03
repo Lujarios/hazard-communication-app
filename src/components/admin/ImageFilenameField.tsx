@@ -1,5 +1,8 @@
 "use client";
 
+/**
+ * Upload a scenario image to public/scenarios/ or pick an existing filename.
+ */
 import Image from "next/image";
 import { Loader2, Upload } from "lucide-react";
 import { useRef, useState } from "react";

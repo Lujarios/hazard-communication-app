@@ -1,3 +1,7 @@
+/**
+ * Public trainee API for a multi-stage assessment run: start/resume, submit
+ * a speech segment, and complete. This is the primary evaluation path.
+ */
 import { TRPCError } from "@trpc/server";
 import { and, asc, desc, eq, ne } from "drizzle-orm";
 import { z } from "zod";
@@ -203,7 +207,7 @@ export const assessmentRunRouter = createTRPCRouter({
         input.assessmentSessionId,
       );
 
-      if (input.runId) {
+      if (input.runId && !input.startNew) {
         const existingById = await ctx.db.query.assessmentRuns.findFirst({
           where: eq(assessmentRuns.id, input.runId),
         });
@@ -211,7 +215,7 @@ export const assessmentRunRouter = createTRPCRouter({
         if (existingById) {
           await assertRunOwner(existingById, input);
 
-          if (!input.startNew || existingById.status !== "completed") {
+          if (existingById.status !== "completed") {
             return loadSnapshot(ctx.db, existingById.id);
           }
         }
@@ -226,26 +230,8 @@ export const assessmentRunRouter = createTRPCRouter({
         orderBy: [desc(assessmentRuns.createdAt)],
       });
 
-      if (inProgress) {
+      if (inProgress && !input.startNew) {
         return loadSnapshot(ctx.db, inProgress.id);
-      }
-
-      if (!input.startNew) {
-        const latestCompleted = await ctx.db.query.assessmentRuns.findFirst({
-          where: and(
-            eq(
-              assessmentRuns.anonymousParticipantId,
-              input.anonymousParticipantId,
-            ),
-            eq(assessmentRuns.scenarioId, input.scenarioId),
-            eq(assessmentRuns.status, "completed"),
-          ),
-          orderBy: [desc(assessmentRuns.completedAt), desc(assessmentRuns.createdAt)],
-        });
-
-        if (latestCompleted) {
-          return loadSnapshot(ctx.db, latestCompleted.id);
-        }
       }
 
       const created = await createRun(ctx.db, {

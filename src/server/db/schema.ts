@@ -8,7 +8,12 @@ import {
 import { type AdapterAccount } from "next-auth/adapters";
 
 /**
- * Multi-project schema prefix for Drizzle ORM.
+ * PostgreSQL schema (tables prefixed `hazard-communication-app_`).
+ *
+ * Auth/org: organizations, users, accounts, sessions, verificationTokens
+ * Content: scenarios, scenarioHazards, personas, scenarioPersonas
+ * Assessment: assessmentSessions (join codes), assessmentRuns, assessmentAttempts,
+ *   assessmentAttemptPersonaEvaluations
  *
  * @see https://orm.drizzle.team/docs/goodies#multi-project-schema
  */
